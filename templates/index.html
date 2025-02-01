@@ -137,7 +137,15 @@
         let visible_feed = null, updating_articles = true, read_articles = 0,
             show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
 
-        function get_feeds() {
+        let lastPromise = Promise.resolve();
+
+        // use an "execution queue" to ensure function run in order.
+        async function runSequentially(task) {
+            lastPromise = lastPromise.then(() => task());
+            return lastPromise;
+        }
+
+        async function get_feeds() {
             // load the feeds for the current user.
             return fetch("/get_feeds", {
                     "method": "POST",
@@ -172,8 +180,12 @@
                     return data;
                 })
                 .then(data => {
+                    runSequentially(() => get_articles());
+                    return data;
+                })
+                .then(data => {
                     // trigger an update of the feed contents.
-                    update_feeds();
+                    runSequentially(() => update_feeds());
                     return data;
                 })
                 .then(data => {
@@ -345,14 +357,23 @@
             return Promise.resolve(result)
                 .then(response => result.json())
                 .then(data => {
-                    let html = format_articles(data);
+                    let html = '';
+                    for (let i = 0; i < data.length; i++)
+                    {
+                        entry = data[i];
+                        if (! $('#a' + entry.id).exists()) // make sure its not a duplicate.
+                            html += format_articles(entry);
+                    };
 
                     return html;
                 })
                 .then(html => {
-                    html += $('div#articles div#accordion_articles').html();
-                    $('div#articles div#accordion_articles').html(html);
+                    html += $('#accordion_articles').html();
 
+                    return html;
+                })
+                .then(html => {
+                    $('#accordion_articles').html(html);
                     return html;
                 })
                 .then(html => {
@@ -567,10 +588,10 @@
                 update_feed($(this).val());
             });
 
-            return Promise.resolve(true);
+            return Promise.resolve();
         };
 
-        function update_feed(feed_id) {
+        async function update_feed(feed_id) {
             let data = null,
                 result = '';
 
@@ -600,7 +621,7 @@
                 })
                 .then(data => {
                     if (visible_feed != null && feed_id == visible_feed && data['status'] == 'success' && data['count'] > 0) {
-                        add_new_articles(data['count'], data['article_ids']);
+                        runSequentially(() => add_new_articles(data['count'], data['article_ids']));
                     }
 
                     return data;
@@ -616,25 +637,24 @@
             update_feeds();
         }
 
-        function changeActiveFeed(event) {
+        async function changeActiveFeed(event) {
             if ($('#active_feed').find(":selected").val() == '')
                 return;
 
-            return Promise.resolve(true).then(() => {
+            let result = await Promise.resolve().then(() => {
                 open_article = null;
                 offset = 0;
                 read_articles = 0;
                 visible_feed = $('#active_feed').val();
                 show_type = $('#show_type').val();
             })
-            .then(() => {
-                get_articles();
-
-                return true;
-            })
             .catch(error => {
                     console.log("changeActiveFeed: " + error);
             });
+
+            result = await runSequentially(() => get_articles());
+
+            return result;
         };
 
 
@@ -782,9 +802,6 @@
         };
 
         async function articlesScrollEvent(event) {
-            if(updating_articles == true) // ignore scroll events that may be triggered while we are already updating the articles.
-                return true;
-
             // if we are scrolling fetch another limit articles and add them to the accordion.
             if ($('div#articles').isScrolledToBottom() && last_count == limit) {
                 offset = offset + limit;
@@ -834,10 +851,10 @@
             $('#articles').on('scroll', articlesScrollEvent);
 
             // check for new articles every 15 minutes
-            window.setInterval(update_feeds, 900000);
+            window.setInterval(runSequentially(() => update_feeds()), 900000);
 
             // get the party started :D
-            get_feeds();
+            runSequentially(() => get_feeds());
         });
     </script>
 <!-- End Content -->
