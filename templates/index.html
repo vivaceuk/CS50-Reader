@@ -134,18 +134,19 @@
 		  </div>
 		</div>
     <script>
-        let visible_feed = null, updating_articles = true, read_articles = 0,
+        let visible_feed = null, updating_articles = false, first_run = true,
             show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
 
         let lastPromise = Promise.resolve();
 
-        // use an "execution queue" to ensure function run in order.
+        // use an "execution queue" to ensure functions run in order.
         async function runSequentially(task) {
             lastPromise = lastPromise.then(() => task());
             return lastPromise;
         }
 
         async function get_feeds() {
+            console.log("get_feeds()::");
             // load the feeds for the current user.
             return fetch("/get_feeds", {
                     "method": "POST",
@@ -180,15 +181,12 @@
                     return data;
                 })
                 .then(data => {
-                    runSequentially(() => get_articles());
-                    return data;
-                })
-                .then(data => {
                     // trigger an update of the feed contents.
                     runSequentially(() => update_feeds());
                     return data;
                 })
                 .then(data => {
+                    // change active_feed to trigger get_articles.
                     $('#active_feed').trigger('change');
 
                     return data;
@@ -199,7 +197,9 @@
         };
 
         function format_articles(data) {
-            if (!Array.isArray(data)) // make sure we have an array of values not just a single object.
+            console.log("format_articles()::");
+            let array_of_data = [];
+            if (!Array.isArray(data)) // make sure we can handle a single object as well as an array of data.
                 array_of_data = [data];
             else
                 array_of_data = data;
@@ -260,7 +260,9 @@
         }
 
         async function fetch_articles(a_limit = 20, a_offset = 0, article_ids = null) {
+            console.log("fetch_articles()::");
             // fetch limit articles from the server starting at offset.
+            // if article_ids is supplied, ignore limit and offset and fetch those articles.
             return fetch("/fetch_articles", {
                     "method": "POST",
                     "headers": {
@@ -280,6 +282,13 @@
         }
 
         function enhance_accordion() {
+            console.log("enhance_accordion()::");
+            // remove event handlers so that we don't add them more than once.
+            $(".accordion-collapse").each(
+            function() {
+                $(this).off('shown.bs.collapse');
+                $(this).off('hidden.bs.collapse');
+            });
             // add event handlers to each collapsible
             $(".accordion-collapse").each(
             function() {
@@ -299,6 +308,7 @@
         }
 
         async function get_articles() {
+            console.log("get_articles()::");
             // populate the articles div.
             if (visible_feed == null)
                 return;
@@ -325,8 +335,11 @@
                 })
                 .then(data => {
                     enhance_accordion();
-                    updating_articles = false;
                     return data;
+                })
+                .finally(()=> {
+                    updating_articles = false;
+                    $('#articles').scrollTop(0);
                 })
                 .catch(error => {
                     console.log("get_articles: " + error);
@@ -335,6 +348,7 @@
         };
 
         function sort_articles() {
+            console.log("sort_articles()::");
             // doing this in the browser is costly, but only a few articles should need sorting.
             var article_list = $(".accordion-item");
             article_list.sort(function(a, b){
@@ -351,12 +365,13 @@
 
         async function add_new_articles(count = 0, article_ids = null)
         {
-            updating_articles = true;
-            // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start.
+            console.log("add_new_articles()::");
+            // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start and then sort them.
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
                 .then(response => result.json())
                 .then(data => {
+                    updating_articles = true;
                     let html = '';
                     for (let i = 0; i < data.length; i++)
                     {
@@ -380,8 +395,16 @@
                     return sort_articles();
                 })
                 .then(html => {
+                    if (open_article != null) {
+                        //$('#a' + open_article).collapse({ toggle: false}).collapse('show');
+                        $('#collapse' + open_article).addClass('show');
+                        runSequentially(() => reposition_article());
+                    }
+
+                    return runSequentially(() => enhance_accordion());
+                })
+                .finally(() => {
                     updating_articles = false;
-                    return enhance_accordion();
                 })
                 .catch(error => {
                     console.log("add_new_articles: " + error);
@@ -389,24 +412,31 @@
 
         }
 
+        function reposition_article() {
+            console.log("reposition_article()::");
+            if (open_article != null) {
+                // make sure the collapse doesn't open out of view
+                $('div#a' + open_article).get(0).scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest'
+                });
+            }
+        }
+
         function mark_article_read_event(event) {
+            console.log("mark_article_read_event()::");
             const source = event.target || event.srcElement;
 
             let article_id = source.id.substring(8);
 
             open_article = article_id;
 
-            // make sure the collapse doesn't open out of view
-            $('div#a' + article_id).get(0).scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest'
-            });
+            reposition_article();
 
             if ($("#s" + article_id).hasClass("hidebadge"))
                 return;
 
             mark_article_read(article_id);
-            read_articles += 1;
 
             timer = setTimeout(() => {
                             $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
@@ -414,6 +444,7 @@
         };
 
         function mark_article_read(article_id) {
+            console.log("mark_article_read()::");
             let data = JSON.stringify({
                 'feed_id': visible_feed,
                 'article_id': article_id,
@@ -435,6 +466,11 @@
         }
 
         function hide_article_event(event) {
+            if(updating_articles == true)
+                return;
+
+            console.log("hide_article_event()::");
+
             const source = event.target || event.srcElement;
             let article_id = source.id.substring(8);
 
@@ -444,6 +480,8 @@
             if (show_type == 0) {
                 // only hide the article if show_type is unread
                 timer = setTimeout(() => {
+                    $("div#a" + article_id).off('shown.bs.collapse');
+                    $("div#a" + article_id).off('hidden.bs.collapse');
                     $("div#a" + article_id).hide();
                 }, 750);
             }
@@ -583,6 +621,7 @@
         };
 
         async function update_feeds() {
+            console.log("update_feeds()::");
             // doing this feed by feed will hopefully prevent timeouts.
             $('#active_feed option').each(function() {
                 update_feed($(this).val());
@@ -591,7 +630,8 @@
             return Promise.resolve();
         };
 
-        async function update_feed(feed_id) {
+        async function update_feed(feed_id = null) {
+            console.log("update_feed()::");
             let data = null,
                 result = '';
 
@@ -621,7 +661,10 @@
                 })
                 .then(data => {
                     if (visible_feed != null && feed_id == visible_feed && data['status'] == 'success' && data['count'] > 0) {
-                        runSequentially(() => add_new_articles(data['count'], data['article_ids']));
+                        if (first_run != true)
+                            add_new_articles(data['count'], data['article_ids']);
+                        
+                        first_run = false;
                     }
 
                     return data;
@@ -638,13 +681,13 @@
         }
 
         async function changeActiveFeed(event) {
+            console.log("changeActiveFeed()::");
             if ($('#active_feed').find(":selected").val() == '')
                 return;
 
             let result = await Promise.resolve().then(() => {
                 open_article = null;
                 offset = 0;
-                read_articles = 0;
                 visible_feed = $('#active_feed').val();
                 show_type = $('#show_type').val();
             })
@@ -687,7 +730,7 @@
                 })
                 .then(data => {
                     const articles_div = $('div#articles').get(0);
-                    if (articles_div.scrollHeight < articles_div.clientHeight)
+                    if (articles_div.scrollHeight < articles_div.clientHeight && last_count == limit)
                         $('div#articles').trigger('scroll');
 
                     return data;
@@ -783,14 +826,10 @@
             if (open_article == null)
                 return;
 
-            // make sure the collapse doesn't open out of view
-            $('#a' + open_article).get(0).scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest'
-            });
+            reposition_article();
         }
 
-        // add an 'isScrolledToBottom' function to the jQuery object.
+        // add an 'isScrolledToBottom' function to the jQuery object. we're only using this in articlesScrollEvent.
         jQuery.fn.isScrolledToBottom = function () {
             const element = this.get(0);
             return (Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop) <= 1);
@@ -802,6 +841,10 @@
         };
 
         async function articlesScrollEvent(event) {
+            if (updating_articles == true)
+                return;
+
+            console.log("articlesScrollEvent()::");
             // if we are scrolling fetch another limit articles and add them to the accordion.
             if ($('div#articles').isScrolledToBottom() && last_count == limit) {
                 offset = offset + limit;
@@ -837,7 +880,7 @@
 
         $(document).ready(function() {
             // register event handlers. using jQuery seems to work more reliably in chrome
-            $(document).on('resize', resizeEvent);
+            $(window).on('resize', resizeEvent);
             $('#add_feed').on('click', showAddFeedModal);
             $('#delete_feed').on('click', showDeleteFeedModal);
             $('#refresh_feeds').on('click', clickRefreshFeeds);
@@ -851,7 +894,7 @@
             $('#articles').on('scroll', articlesScrollEvent);
 
             // check for new articles every 15 minutes
-            window.setInterval(runSequentially(() => update_feeds()), 900000);
+            window.setInterval(update_feeds, 900000);
 
             // get the party started :D
             runSequentially(() => get_feeds());
