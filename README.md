@@ -1,6 +1,6 @@
 # CS50-Reader
 
-CS50-Reader is a Flask/SQLite based RSS reader, inspired by the defunct Google Reader.
+CS50-Reader is a web-based RSS reader, inspired by the defunct Google Reader. The backend is written in Python using Flask/SQLite; and the front end is written in Javascript using Bootstrap and jQuery. Although the basis for this project was my final project for CS50, as I've continued to work on it I decided that it should have it's own repo. There have been significant logic changes since the CS50 version. ;)
 
 ## Features
 
