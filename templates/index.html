@@ -109,7 +109,7 @@
 						<option value="2">All</option>
 					</select>
 				</div>
-				<div class="col col-md-auto"><a href="#0" id="mark_feed_read" class="btn btn-primary" role="button" data-bs-toggle="button">Mark Read</a></div>
+				<div class="col col-md-auto"><a href="#0" id="mark_feed_read" class="btn btn-primary disabled notactive" role="button" data-bs-toggle="button" aria-disabled="true">Mark Read</a></div>
 				</div>
 				</div>
 				</div>
@@ -136,7 +136,7 @@
 		  </div>
 		</div>
     <script>
-        let visible_feed = null, updating_articles = false, first_run = true,
+        let visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
             show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
 
         let lastPromise = Promise.resolve();
@@ -155,9 +155,19 @@
                     "headers": {
                         "Content-Type": "application/json"
                     },
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     let html = '';
                     try {
                         data.forEach(entry => {
@@ -277,6 +287,13 @@
                         'offset': a_offset,
                         'article_ids': article_ids,
                     }),
+                    signal: AbortSignal.timeout(fetch_timeout),
+                })
+                .then(response => {
+                    if (response.status == 200) {
+                        return response;
+                    }
+                    return Promise.reject(response);
                 })
                 .catch(error => {
                     console.log("fetch_articles: " + error);
@@ -288,23 +305,19 @@
             // remove event handlers so that we don't add them more than once.
             $(".accordion-collapse").each(
             function() {
-                $(this).off('shown.bs.collapse');
-                $(this).off('hidden.bs.collapse');
+                $(this).off('shown.bs.collapse').off('hidden.bs.collapse');
             });
             // add event handlers to each collapsible
             $(".accordion-collapse").each(
             function() {
-                $(this).on('shown.bs.collapse', mark_article_read_event);
-                $(this).on('hidden.bs.collapse', hide_article_event);
+                $(this).on('shown.bs.collapse', mark_article_read_event).on('hidden.bs.collapse', hide_article_event);
             });
 
             // toggle 'mark feed read' button (are there 'accordion-item's without a 'hidebadge' class?)
             if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length > 0) {
-                $('#mark_feed_read').removeClass('disabled notactive');
-                $('#mark_feed_read').removeAttr('aria-disabled');
+                $('#mark_feed_read').removeClass('disabled notactive').removeAttr('aria-disabled');
             } else {
-                $('#mark_feed_read').addClass('disabled notactive');
-                $('#mark_feed_read').attr('aria-disabled', 'true');
+                $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
             }
 
         }
@@ -320,8 +333,16 @@
             const result = await fetch_articles();
 
             return Promise.resolve(result)
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     updating_articles = true;
                     // create the accordion and populate it.
                     last_count = data.length;
@@ -331,20 +352,23 @@
 
                     html += '</div>';
 
-                    $('#status_spinner').hide();
                     $('#accordion_articles').html(html);
-                    return result;
+                    return data;
                 })
                 .then(data => {
                     enhance_accordion();
                     return data;
                 })
+                .catch(error => {
+                    if (error instanceof Promise)
+                        console.log("get_articles: %s", error.toString());
+                    else
+                        console.log("get_articles: " + error);
+                })
                 .finally(()=> {
+                    $('#status_spinner').hide();
                     updating_articles = false;
                     $('#articles').scrollTop(0);
-                })
-                .catch(error => {
-                    console.log("get_articles: " + error);
                 });
 
         };
@@ -371,14 +395,22 @@
             // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start and then sort them.
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
-                .then(response => result.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     updating_articles = true;
                     let html = '';
                     for (let i = 0; i < data.length; i++)
                     {
                         entry = data[i];
-                        if (! $('#a' + entry.id).exists()) // make sure its not a duplicate.
+                        if (! $('#a' + entry.id).exists()) // make sure that it's not a duplicate.
                             html += format_articles(entry);
                     };
 
@@ -405,11 +437,14 @@
 
                     return runSequentially(() => enhance_accordion());
                 })
+                .catch(error => {
+                    if (error instanceof Promise)
+                        console.log("add_new_articles: %s", error.toString());
+                    else
+                        console.log("add_new_articles: " + error);
+                })
                 .finally(() => {
                     updating_articles = false;
-                })
-                .catch(error => {
-                    console.log("add_new_articles: " + error);
                 });
 
         }
@@ -425,7 +460,7 @@
             }
         }
 
-        function mark_article_read_event(event) {
+        async function mark_article_read_event(event) {
             //console.log("mark_article_read_event()::");
             const source = event.target || event.srcElement;
 
@@ -438,11 +473,38 @@
             if ($("#s" + article_id).hasClass("hidebadge"))
                 return;
 
-            mark_article_read(article_id);
+            const result = await mark_article_read(article_id);
 
-            timer = setTimeout(() => {
-                            $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
-                        }, 500);
+            Promise.resolve(result)
+                .then(response => {
+                    if (response && response.status == 200) {
+                        return response.json();
+                    }
+
+                    return Promise.reject(response);
+                })
+                .then(result => {
+                    if (result instanceof Promise){
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Unable to mark article read.</p>');
+                        toastBootstrap.show();
+                        throw(Error(result));
+                    }
+
+                    if (result['status'] == "success") {
+                        timer = setTimeout(() => {
+                                $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
+                            }, 500);
+                    }
+                })
+                .catch(error =>  {
+                        if (error instanceof Promise)
+                            console.log("mark_article_read_event: %s", error.toString());
+                        else
+                            console.log("mark_article_read_event: " + error);
+                });
+
         };
 
         function mark_article_read(article_id) {
@@ -451,16 +513,14 @@
                 'feed_id': visible_feed,
                 'article_id': article_id,
             });
+            
             return fetch("/mark_article_read", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
                     },
                     "body": data,
-                })
-                .then(response => response.json())
-                .then(data => {
-                    return data;
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .catch(error => {
                     console.log("mark_article_read: " + error);
@@ -479,12 +539,10 @@
             if (article_id == open_article)
                     open_article = null;
 
-            if (show_type == 0) {
+            if (show_type == 0 && $("#s" + article_id).hasClass("hidebadge")) {
                 // only hide the article if show_type is unread
                 timer = setTimeout(() => {
-                    $("div#a" + article_id).off('shown.bs.collapse');
-                    $("div#a" + article_id).off('hidden.bs.collapse');
-                    $("div#a" + article_id).hide();
+                    $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
                 }, 750);
             }
 
@@ -497,8 +555,7 @@
         };
 
         $("#addFeedModal").on("hidden.bs.modal", function() {
-            $('#inputFeed').removeClass('is-invalid');
-            $('#inputFeed').val('');
+            $('#inputFeed').removeClass('is-invalid').val('');
         });
 
         function clickAddFeed(event) {
@@ -510,16 +567,24 @@
                     },
                     "body": JSON.stringify({
                         'feed_url': $('#inputFeed').val(),
-                    })
+                    }),
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     if (data['status'] == 'success') {
-                        $('#inputFeed').trigger('blur');
+                        $('#inputFeed').trigger('blur').removeClass('is-invalid');
                         $('#btnAddFeed').trigger('blur');
                         $('#btnAddFeedCancel').trigger('blur');
                         $('#addFeedModal').modal('hide');
-                        $('#inputFeed').removeClass('is-invalid');
                         const liveToast = document.getElementById('liveToast')
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                         $('.toast-body').html('<p>Feed added.</p>');
@@ -550,9 +615,18 @@
                     "headers": {
                         "Content-Type": "application/json"
                     },
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     let html = '';
                     data.forEach(entry => {
                         html += '<option value="' + entry.id + '">' + entry.title + '</option>';
@@ -580,15 +654,23 @@
                     "body": JSON.stringify({
                         'feed_id': feed_id,
                     }),
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     if (data['status'] == 'success') {
                         $('#btnDeleteFeed').trigger('blur');
                         $('#btnDeleteFeedCancel').trigger('blur');
-                        $('#selectFeed').trigger('blur');
+                        $('#selectFeed').trigger('blur').html('');
                         $('#deleteFeedModal').modal('hide');
-                        $('#selectFeed').html('');
 
                         const liveToast = document.getElementById('liveToast');
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
@@ -650,24 +732,36 @@
                         "Content-Type": "application/json"
                     },
                     "body": data,
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data['status'] == 'success') {
-                        const liveToast = document.getElementById('liveToast')
-                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
-                        $('.toast-body').html('<p>Feeds updated.</p>');
-                        toastBootstrap.show();
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
                     }
-                    return data;
+                    return Promise.reject(response);
                 })
                 .then(data => {
-                    if (visible_feed != null && feed_id == visible_feed && data['status'] == 'success' && data['count'] > 0) {
-                        if (first_run != true) // a bit of a fudge, but we don't want to add_new_articles immediately after we get_articles. ;)
-                            add_new_articles(data['count'], data['article_ids']);
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
+                    if (visible_feed != null && feed_id == visible_feed) {
+                        if (data['status'] == 'success' && data['count'] > 0) {
+                            if (first_run != true)
+                                add_new_articles(data['count'], data['article_ids']);
+                            else {
+                                get_articles();
+                                first_run = false;
+                            }
+                            const liveToast = document.getElementById('liveToast')
+                            const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                            $('.toast-body').html('<p>Feed updated.</p>');
+                            toastBootstrap.show();
+                        }
                         else {
-                            get_articles();
-                            first_run = false;
+                            const liveToast = document.getElementById('liveToast')
+                            const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                            $('.toast-body').html('<p>No new articles.</p>');
+                            toastBootstrap.show();
                         }
                     }
 
@@ -690,6 +784,7 @@
                 return;
 
             let result = await Promise.resolve().then(() => {
+                $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
                 $('#accordion_articles').html('');
                 open_article = null;
                 offset = 0;
@@ -720,9 +815,18 @@
                         "Content-Type": "application/json"
                     },
                     "body": data,
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     if (data['status'] == 'success') {
                         $('#accordion_articles').html('');
                         const liveToast = document.getElementById('liveToast');
@@ -754,6 +858,7 @@
             $('#current_password').removeClass('is-invalid');
             $('#new_password').removeClass('is-invalid');
             $('#confirm_password').removeClass('is-invalid');
+
             let data = JSON.stringify({
                 'current_password': $('#current_password').val(),
                 'new_password': $('#new_password').val(),
@@ -765,9 +870,18 @@
                         "Content-Type": "application/json"
                     },
                     "body": data,
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
+                })
                 .then(data => {
+                    if (data instanceof Promise)
+                        throw (Error(data));
+
                     if (data['status'] == 'success') {
                         $('#btnChangePassword').trigger('blur');
                         $('#btnChangePasswordCancel').trigger('blur');
@@ -808,10 +922,13 @@
                         "Content-Type": "application/json"
                     },
                     "body": "",
+                    signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(respose => response.json())
-                .then(data => {
-                    return data;
+                .then(respose => {
+                    if (response.status == 200) {
+                        return response.json();
+                    }
+                    return Promise.reject(response);
                 })
                 .catch(error => {
                     console.log("compact_db: " + error);
@@ -819,12 +936,9 @@
         }
 
         $("#changePasswordModal").on("hidden.bs.modal", function() {
-            $('#current_password').removeClass('is-invalid');
-            $('#current_password').val('');
-            $('#new_password').removeClass('is-invalid');
-            $('#new_password').val('');
-            $('#confirm_password').removeClass('is-invalid');
-            $('#confirm_password').val('');
+            $('#current_password').removeClass('is-invalid').val('');
+            $('#new_password').removeClass('is-invalid').val('');
+            $('#confirm_password').removeClass('is-invalid').val('');
         });
 
         function resizeEvent(event) {
@@ -855,8 +969,16 @@
                 offset = offset + limit;
                 const result = await fetch_articles(limit, offset, null);
                 return Promise.resolve(result)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (response.status == 200) {
+                            return response.json();
+                        }
+                        return Promise.reject(response);
+                    })
                     .then(data => {
+                        if (data instanceof Promise)
+                            throw (Error(data));
+
                         last_count = data.length;
                         let html = $('#accordion_articles').html();
                         for (let i = 0; i < data.length; i++)
