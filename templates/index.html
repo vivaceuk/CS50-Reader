@@ -158,13 +158,19 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
 
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
                         throw (Error(data));
 
@@ -259,7 +265,7 @@
                             '<div class="container"><div class="row align-items-start"><div class="col col-10-auto"><p>' + entry.summary + '</p>' +
                             '<p class="more"><a href="' + entry.link + '" target="_blank" rel="noopener noreferrer">Read more...</a></p></div>';
                         if (entry.thumb_url != '') {
-                            html += '<div class="col col-4 ml-auto"><img src="' + entry.thumb_url + '" loading="lazy" height="' + entry.thumb_height + '" width="' + entry.thumb_width + '" alt="' + entry.title + '"></div></div></div>';
+                            html += '<div class="col col-4 ml-auto"><img src="' + entry.thumb_url + '" class="img-thumbnail" loading="lazy" height="' + entry.thumb_height + '" width="' + entry.thumb_width + '" alt="' + entry.title + '"></div></div></div>';
                         } else {
                             // no image
                             html += '<div class="col col-sm-auto"></div></div></div>';
@@ -289,14 +295,9 @@
                     }),
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(response => {
-                    if (response.status == 200) {
-                        return response;
-                    }
-                    return Promise.reject(response);
-                })
                 .catch(error => {
                     console.log("fetch_articles: " + error);
+                    return error;
                 });
         }
 
@@ -334,17 +335,22 @@
 
             return Promise.resolve(result)
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (new TypeError(data));
 
                     updating_articles = true;
-                    // create the accordion and populate it.
                     last_count = data.length;
                     let html = '';
 
@@ -396,14 +402,20 @@
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (new TypeError(data));
 
                     updating_articles = true;
                     let html = '';
@@ -477,19 +489,26 @@
 
             Promise.resolve(result)
                 .then(response => {
-                    if (response && response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
 
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(result => {
-                    if (result instanceof Promise){
+                    if (result instanceof Error || result instanceof Promise) {
                         const liveToast = document.getElementById('liveToast')
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                         $('.toast-body').html('<p>Error: Unable to mark article read.</p>');
                         toastBootstrap.show();
-                        throw(Error(result));
+
+                        if (result instanceof Error)
+                            throw(result);
+                        else
+                            throw (new TypeError(result));
                     }
 
                     if (result['status'] == "success") {
@@ -513,7 +532,7 @@
                 'feed_id': visible_feed,
                 'article_id': article_id,
             });
-            
+
             return fetch("/mark_article_read", {
                     "method": "POST",
                     "headers": {
@@ -524,6 +543,7 @@
                 })
                 .catch(error => {
                     console.log("mark_article_read: " + error);
+                    return error;
                 });
         }
 
@@ -571,14 +591,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     if (data['status'] == 'success') {
                         $('#inputFeed').trigger('blur').removeClass('is-invalid');
@@ -618,14 +644,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     let html = '';
                     data.forEach(entry => {
@@ -657,14 +689,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     if (data['status'] == 'success') {
                         $('#btnDeleteFeed').trigger('blur');
@@ -735,14 +773,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     if (visible_feed != null && feed_id == visible_feed) {
                         if (data['status'] == 'success' && data['count'] > 0) {
@@ -818,14 +862,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     if (data['status'] == 'success') {
                         $('#accordion_articles').html('');
@@ -873,14 +923,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .then(data => {
+                    if (data instanceof Error)
+                        throw (data);
+
                     if (data instanceof Promise)
-                        throw (Error(data));
+                        throw (TypeError(data));
 
                     if (data['status'] == 'success') {
                         $('#btnChangePassword').trigger('blur');
@@ -925,10 +981,13 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(respose => {
-                    if (response.status == 200) {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    if (response && response.ok) {
                         return response.json();
                     }
-                    return Promise.reject(response);
+                    return response;
                 })
                 .catch(error => {
                     console.log("compact_db: " + error);
@@ -970,14 +1029,20 @@
                 const result = await fetch_articles(limit, offset, null);
                 return Promise.resolve(result)
                     .then(response => {
-                        if (response.status == 200) {
+                        if (response.redirected) {
+                            window.location.href = response.url;
+                        }
+                        if (response && response.ok) {
                             return response.json();
                         }
-                        return Promise.reject(response);
+                        return response;
                     })
                     .then(data => {
+                        if (data instanceof Error)
+                            throw (data);
+
                         if (data instanceof Promise)
-                            throw (Error(data));
+                            throw (TypeError(data));
 
                         last_count = data.length;
                         let html = $('#accordion_articles').html();
