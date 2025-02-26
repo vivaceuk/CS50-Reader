@@ -137,7 +137,7 @@
 		</div>
     <script>
         let visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
-            show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
+            show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0, articles_read = 0;
 
         let lastPromise = Promise.resolve();
 
@@ -148,7 +148,7 @@
         }
 
         async function get_feeds() {
-            //console.log("get_feeds()::");
+            // console.log("get_feeds()::");
             // load the feeds for the current user.
             return fetch("/get_feeds", {
                     "method": "POST",
@@ -158,19 +158,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
 
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (Error(data));
 
@@ -215,7 +219,7 @@
         };
 
         function format_articles(data) {
-            //console.log("format_articles()::");
+            // console.log("format_articles()::");
             let array_of_data = [];
             if (!Array.isArray(data)) // make sure we can handle a single object as well as an array of data. ;)
                 array_of_data = [data];
@@ -278,9 +282,15 @@
         }
 
         async function fetch_articles(a_limit = 20, a_offset = 0, article_ids = null) {
-            //console.log("fetch_articles()::");
+            // console.log("fetch_articles()::");
             // fetch limit articles from the server starting at offset.
             // if article_ids is supplied, ignore limit and offset and fetch those articles.
+            a_offset -= articles_read;
+            if (a_offset < 0)
+            {
+                a_offset = 0;
+                articles_read = 0;
+            }
             return fetch("/fetch_articles", {
                     "method": "POST",
                     "headers": {
@@ -302,7 +312,7 @@
         }
 
         function enhance_accordion() {
-            //console.log("enhance_accordion()::");
+            // console.log("enhance_accordion()::");
             // remove event handlers so that we don't add them more than once.
             $(".accordion-collapse").each(
             function() {
@@ -313,18 +323,19 @@
             function() {
                 $(this).on('shown.bs.collapse', mark_article_read_event).on('hidden.bs.collapse', hide_article_event);
             });
+        }
 
+        function toggleMarkFeedReadButton() {
             // toggle 'mark feed read' button (are there 'accordion-item's without a 'hidebadge' class?)
             if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length > 0) {
                 $('#mark_feed_read').removeClass('disabled notactive').removeAttr('aria-disabled');
             } else {
                 $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
             }
-
         }
 
         async function get_articles() {
-            //console.log("get_articles()::");
+            // console.log("get_articles()::");
             // populate the articles div.
             if (visible_feed == null)
                 return;
@@ -335,18 +346,23 @@
 
             return Promise.resolve(result)
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (new TypeError(data));
 
@@ -363,6 +379,7 @@
                 })
                 .then(data => {
                     enhance_accordion();
+                    toggleMarkFeedReadButton();
                     return data;
                 })
                 .catch(error => {
@@ -380,7 +397,7 @@
         };
 
         function sort_articles() {
-            //console.log("sort_articles()::");
+            // console.log("sort_articles()::");
             // doing this in the browser is costly, but only a few articles should need sorting.
             var article_list = $(".accordion-item");
             article_list.sort(function(a, b){
@@ -397,23 +414,28 @@
 
         async function add_new_articles(count = 0, article_ids = null)
         {
-            //console.log("add_new_articles()::");
+            // console.log("add_new_articles()::");
             // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start and then sort them.
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (new TypeError(data));
 
@@ -447,7 +469,11 @@
                         runSequentially(() => reposition_article());
                     }
 
-                    return runSequentially(() => enhance_accordion());
+                    return runSequentially(() => {
+                        enhance_accordion();
+                        toggleMarkFeedReadButton();
+                });
+
                 })
                 .catch(error => {
                     if (error instanceof Promise)
@@ -462,7 +488,7 @@
         }
 
         function reposition_article() {
-            //console.log("reposition_article()::");
+            // console.log("reposition_article()::");
             if (open_article != null) {
                 // make sure the collapse doesn't open out of view
                 $('div#a' + open_article).get(0).scrollIntoView({
@@ -473,7 +499,7 @@
         }
 
         async function mark_article_read_event(event) {
-            //console.log("mark_article_read_event()::");
+            // console.log("mark_article_read_event()::");
             const source = event.target || event.srcElement;
 
             let article_id = source.id.substring(8);
@@ -489,10 +515,14 @@
 
             Promise.resolve(result)
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
 
@@ -515,6 +545,7 @@
                         timer = setTimeout(() => {
                                 $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
                             }, 500);
+                        articles_read += 1;
                     }
                 })
                 .catch(error =>  {
@@ -527,7 +558,7 @@
         };
 
         function mark_article_read(article_id) {
-            //console.log("mark_article_read()::");
+            // console.log("mark_article_read()::");
             let data = JSON.stringify({
                 'feed_id': visible_feed,
                 'article_id': article_id,
@@ -551,7 +582,7 @@
             if(updating_articles == true)
                 return;
 
-            //console.log("hide_article_event()::");
+            // console.log("hide_article_event()::");
 
             const source = event.target || event.srcElement;
             let article_id = source.id.substring(8);
@@ -563,6 +594,8 @@
                 // only hide the article if show_type is unread
                 timer = setTimeout(() => {
                     $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
+                    if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length < 1)
+                        $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled');
                 }, 750);
             }
 
@@ -591,18 +624,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
@@ -644,18 +682,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
@@ -689,18 +732,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
@@ -743,7 +791,7 @@
         };
 
         async function update_feeds() {
-            //console.log("update_feeds()::");
+            // console.log("update_feeds()::");
             // doing this feed by feed will hopefully prevent timeouts.
             $('#active_feed option').each(function() {
                 update_feed($(this).val());
@@ -753,7 +801,7 @@
         };
 
         async function update_feed(feed_id = null) {
-            //console.log("update_feed()::");
+            // console.log("update_feed()::");
             let data = null,
                 result = '';
 
@@ -773,18 +821,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
@@ -823,7 +876,7 @@
         }
 
         async function changeActiveFeed(event) {
-            //console.log("changeActiveFeed()::");
+            // console.log("changeActiveFeed()::");
             if ($('#active_feed').find(":selected").val() == '')
                 return;
 
@@ -862,23 +915,29 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
                     if (data['status'] == 'success') {
                         $('#accordion_articles').html('');
+                        $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
                         const liveToast = document.getElementById('liveToast');
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                         $('.toast-body').html('<p>Feed Marked Read.</p>');
@@ -923,18 +982,23 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(response => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .then(data => {
-                    if (data instanceof Error)
-                        throw (data);
-
                     if (data instanceof Promise)
                         throw (TypeError(data));
 
@@ -981,12 +1045,20 @@
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
                 .then(respose => {
+                    if (!response)
+                        throw(new TypeError(response));
+
                     if (response.redirected) {
                         window.location.href = response.url;
                     }
-                    if (response && response.ok) {
+
+                    if (response.ok) {
                         return response.json();
                     }
+
+                    if (response instanceof Error)
+                        throw (response);
+
                     return response;
                 })
                 .catch(error => {
@@ -1022,25 +1094,30 @@
             if (updating_articles == true)
                 return;
 
-            //console.log("articlesScrollEvent()::");
+            // console.log("articlesScrollEvent()::");
             // if we are scrolling fetch another limit articles and add them to the accordion.
             if ($('div#articles').isScrolledToBottom() && last_count == limit) {
                 offset = offset + limit;
                 const result = await fetch_articles(limit, offset, null);
                 return Promise.resolve(result)
                     .then(response => {
+                        if (!response)
+                        throw(new TypeError(response));
+
                         if (response.redirected) {
                             window.location.href = response.url;
                         }
-                        if (response && response.ok) {
+
+                        if (response.ok) {
                             return response.json();
                         }
+
+                        if (response instanceof Error)
+                            throw (response);
+
                         return response;
                     })
                     .then(data => {
-                        if (data instanceof Error)
-                            throw (data);
-
                         if (data instanceof Promise)
                             throw (TypeError(data));
 
@@ -1061,7 +1138,8 @@
                         return sort_articles();
                     })
                     .then(() => {
-                        return enhance_accordion();
+                        enhance_accordion();
+                        toggleMarkFeedReadButton();
                     })
                     .catch(error => {
                         last_count = 0;
