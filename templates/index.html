@@ -333,7 +333,7 @@
 
         function toggleMarkFeedReadButton() {
             // toggle 'mark feed read' button (are there 'accordion-item's without a 'hidebadge' class?)
-            if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length > 0) {
+            if ($('div.accordion-item h2.accordion-header button span:not(.hidebadge)').length > 0) {
                 $('#mark_feed_read').removeClass('disabled notactive').removeAttr('aria-disabled');
             } else {
                 $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
