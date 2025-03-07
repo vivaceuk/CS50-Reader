@@ -602,8 +602,9 @@
                 timer = setTimeout(() => {
                     $("div#a" + article_id + '.tooltip').hide();
                     $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
-                    if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length < 1)
-                        $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled');
+                    toggleMarkFeedReadButton();
+                    if($('div#articles').isScrolledToBottom() && last_count == limit)
+                        $('div#articles').trigger('scroll');
                 }, 750);
             }
 
@@ -955,13 +956,6 @@
                         $('.toast-body').html('<p>Feed Marked Read.</p>');
                         toastBootstrap.show();
                     }
-
-                    return data;
-                })
-                .then(data => {
-                    const articles_div = $('div#articles').get(0);
-                    if (articles_div.scrollHeight < articles_div.clientHeight && last_count == limit)
-                        $('div#articles').trigger('scroll');
 
                     return data;
                 })
