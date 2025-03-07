@@ -109,7 +109,7 @@
 						<option value="2">All</option>
 					</select>
 				</div>
-				<div class="col col-md-auto"><a href="#0" id="mark_feed_read" class="btn btn-primary disabled notactive" role="button" data-bs-toggle="button" aria-disabled="true">Mark Read</a></div>
+				<div class="col col-md-auto"><a id="mark_feed_read" class="btn btn-primary disabled notactive" role="button" data-bs-toggle="button" aria-disabled="true">Mark Read</a></div>
 				</div>
 				</div>
 				</div>
@@ -137,7 +137,7 @@
 		</div>
     <script>
         let visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
-            show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0, articles_read = 0;
+            show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
 
         let lastPromise = Promise.resolve();
 
@@ -254,15 +254,15 @@
                         html += '<div class="accordion-item" id="a' + entry.id + '" data-published-date="' + published.getTime() + '" data-article-id="' + entry.id + '">' +
                             '<h2 class="accordion-header">';
 
-                        html += '<button class="accordion-button collapsed" type="button" id="a' + entry.id + '" data-bs-toggle="collapse"' +
+                        html += '<button class="accordion-button collapsed" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
                             ' data-bs-target="#collapse' + entry.id + '" aria-expanded="false" aria-controls="collapse' + entry.id + '">' +
-                            '<div class="container"><div class="row align-items-start"><div class="col col-bg-auto text-truncate">' +
-                            entry.title + '</div><div id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</div><div class="col col-sm-auto align-items-end ms-auto">';
+                            '<span class="container"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
+                            entry.title + '</span><span id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</span><span class="col col-sm-auto align-items-end ms-auto">';
                         html += '<span id="s' + entry.id + '" class="badge rounded-pill text-bg-primary';
                         if (entry.is_read == 1)
                             html += ' hidebadge" aria-hidden="true';
                         html += '">New</span>' +
-                            '</div</div></button>' +
+                            '</span></span></button>' +
                             '</h2>' +
                             '<div id="collapse' + entry.id + '" class="accordion-collapse collapse" data-bs-parent="#accordion_articles">' +
                             '<div class="accordion-body">' +
@@ -285,12 +285,6 @@
             // console.log("fetch_articles()::");
             // fetch limit articles from the server starting at offset.
             // if article_ids is supplied, ignore limit and offset and fetch those articles.
-            a_offset -= articles_read;
-            if (a_offset < 0)
-            {
-                a_offset = 0;
-                articles_read = 0;
-            }
             return fetch("/fetch_articles", {
                     "method": "POST",
                     "headers": {
@@ -311,6 +305,16 @@
                 });
         }
 
+        function initialiseTooltips() {
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        }
+
+        function hideTooltips() {
+            $(".tooltip").hide();
+
+        }
+
         function enhance_accordion() {
             // console.log("enhance_accordion()::");
             // remove event handlers so that we don't add them more than once.
@@ -323,6 +327,8 @@
             function() {
                 $(this).on('shown.bs.collapse', mark_article_read_event).on('hidden.bs.collapse', hide_article_event);
             });
+
+            initialiseTooltips();
         }
 
         function toggleMarkFeedReadButton() {
@@ -438,14 +444,16 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (new TypeError(data));
-
+                    hideTooltips();
                     updating_articles = true;
                     let html = '';
                     for (let i = 0; i < data.length; i++)
                     {
                         entry = data[i];
-                        if (! $('#a' + entry.id).exists()) // make sure that it's not a duplicate.
+                        if (! $('#a' + entry.id).exists()) {
+                            // make sure that it's not a duplicate.
                             html += format_articles(entry);
+                        }
                     };
 
                     return html;
@@ -545,7 +553,6 @@
                         timer = setTimeout(() => {
                                 $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
                             }, 500);
-                        articles_read += 1;
                     }
                 })
                 .catch(error =>  {
@@ -593,6 +600,7 @@
             if (show_type == 0 && $("#s" + article_id).hasClass("hidebadge")) {
                 // only hide the article if show_type is unread
                 timer = setTimeout(() => {
+                    $("div#a" + article_id + '.tooltip').hide();
                     $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
                     if ($('div.accordion-item h2.accordion-header button div span:not(.hidebadge)').length < 1)
                         $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled');
@@ -885,6 +893,7 @@
                 $('#accordion_articles').html('');
                 open_article = null;
                 offset = 0;
+                hideTooltips();
                 visible_feed = $('#active_feed').val();
                 show_type = $('#show_type').val();
             })
@@ -902,6 +911,8 @@
             event.preventDefault();
             if (show_type != 0)
                 return;
+
+            hideTooltips();
 
             data = JSON.stringify({
                 'feed_id': visible_feed,
@@ -936,6 +947,7 @@
                         throw (TypeError(data));
 
                     if (data['status'] == 'success') {
+                        offset = 0;
                         $('#accordion_articles').html('');
                         $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
                         const liveToast = document.getElementById('liveToast');
@@ -1120,6 +1132,8 @@
                     .then(data => {
                         if (data instanceof Promise)
                             throw (TypeError(data));
+
+                        hideTooltips();
 
                         last_count = data.length;
                         let html = $('#accordion_articles').html();
