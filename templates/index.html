@@ -22,7 +22,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnDeleteFeedCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnDeleteFeedCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnDeleteFeed" class="btn btn-primary">Delete Feed</button>
 			</div>
 		</div>
@@ -47,7 +47,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnAddFeedCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnAddFeedCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnAddFeed" class="btn btn-primary">Add Feed</button>
 			</div>
 		</div>
@@ -79,7 +79,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnChangePasswordCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnChangePasswordCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnChangePassword" class="btn btn-primary">Change Password</button>
 			</div>
 		</div>
@@ -136,7 +136,7 @@
 		  </div>
 		</div>
     <script>
-        let visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
+        let timer = null, visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
             show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
 
         let lastPromise = Promise.resolve();
@@ -147,16 +147,22 @@
             return lastPromise;
         }
 
-        async function get_feeds() {
-            // console.log("get_feeds()::");
-            // load the feeds for the current user.
-            return fetch("/get_feeds", {
+        async function fetch_feeds() {
+            return fetch("/fetch_feeds", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
                     },
                     signal: AbortSignal.timeout(fetch_timeout),
-                })
+                });
+        }
+
+        async function get_feeds() {
+            // console.log("get_feeds()::");
+            // load the feeds for the current user.
+            let result = await fetch_feeds();
+
+            return Promise.resolve(result)
                 .then(response => {
                     if (!response)
                         throw(new TypeError(response));
@@ -317,6 +323,7 @@
 
         function enhance_accordion() {
             // console.log("enhance_accordion()::");
+            hideTooltips();
             // remove event handlers so that we don't add them more than once.
             $(".accordion-collapse").each(
             function() {
@@ -371,6 +378,8 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (new TypeError(data));
+
+                    hideTooltips();
 
                     updating_articles = true;
                     last_count = data.length;
@@ -616,6 +625,13 @@
             $('#addFeedModal').modal('show');
         };
 
+        $("#addFeedModal").on("hide.bs.modal", function() {
+            // blur controls to prevent ARIA errors.
+            $('#inputFeed').trigger('blur');
+            $('#btnAddFeed').trigger('blur');
+            $('#btnAddFeedCancel').trigger('blur');
+        });
+
         $("#addFeedModal").on("hidden.bs.modal", function() {
             $('#inputFeed').removeClass('is-invalid').val('');
         });
@@ -681,15 +697,11 @@
                 });
         };
 
-        function showDeleteFeedModal(event) {
+        async function showDeleteFeedModal(event) {
             event.preventDefault();
-            return fetch("/get_feeds", {
-                    "method": "POST",
-                    "headers": {
-                        "Content-Type": "application/json"
-                    },
-                    signal: AbortSignal.timeout(fetch_timeout),
-                })
+            let result = await fetch_feeds();
+
+            return Promise.resolve(result)
                 .then(response => {
                     if (!response)
                         throw(new TypeError(response));
@@ -727,6 +739,12 @@
                     console.log("showDeleteFeedModal: " + error);
                 });
         };
+
+        $("#deleteFeedModal").on("hide.bs.modal", function() {
+            // blur controls to prevent ARIA errors.
+            $('#btnDeleteFeed').trigger('blur');
+            $('#btnDeleteFeedCancel').trigger('blur');
+        });
 
         function clickDeleteFeed(event) {
             let feed_id = $('#selectFeed').val();
@@ -775,7 +793,7 @@
                     return data;
                 })
                 .then(data => {
-                    if (feed_id == visible_feed) {
+                    if (data['status'] == 'success' && feed_id == visible_feed) {
                         visible_feed = null;
                         open_article = null;
                         $('#accordion_articles').html('');
@@ -783,15 +801,17 @@
                     return data;
                 })
                 .then(data => {
-                    get_feeds();
+                    if (data['status'] == 'success')
+                        get_feeds();
                     return data;
                 })
                 .then(data => {
-                    // clean up the database. deleting the feed and articles will leave empty space.
-                    timer = setTimeout(() => {
-                        compact_db();
-                    }, 750);
-
+                    if (data['status'] == 'success') {
+                        // clean up the database. deleting the feed and articles will leave empty space.
+                        timer = setTimeout(() => {
+                            compact_db();
+                        }, 750);
+                    }
                     return data;
                 })
                 .catch(error => {
@@ -968,6 +988,15 @@
             event.preventDefault();
             $('#changePasswordModal').modal('show');
         }
+
+        $("#changePasswordModal").on("hide.bs.modal", function() {
+            // blur controls to prevent ARIA errors.
+            $('#btnChangePassword').trigger('blur');
+            $('#btnChangePasswordCancel').trigger('blur');
+            $('#current_password').trigger('blur');
+            $('#new_password').trigger('blur');
+            $('#confirm_password').trigger('blur');
+        });
 
         function clickChangePassword(event) {
             $('#current_password').removeClass('is-invalid');
