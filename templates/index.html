@@ -22,7 +22,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnDeleteFeedCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnDeleteFeedCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnDeleteFeed" class="btn btn-primary">Delete Feed</button>
 			</div>
 		</div>
@@ -47,7 +47,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnAddFeedCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnAddFeedCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnAddFeed" class="btn btn-primary">Add Feed</button>
 			</div>
 		</div>
@@ -79,7 +79,7 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" id="btnChangePasswordCancel" class="btn btn-secondary" type="cancel" data-bs-dismiss="modal">Close</button>
+				<button type="button" id="btnChangePasswordCancel" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 				<button type="button" id="btnChangePassword" class="btn btn-primary">Change Password</button>
 			</div>
 		</div>
@@ -136,8 +136,16 @@
 		  </div>
 		</div>
     <script>
-        let timer = null, visible_feed = null, updating_articles = false, first_run = true, fetch_timeout = 5000,
-            show_type = 0, open_article = null, offset = 0, limit = 20, last_count = 0;
+        let timer = null,
+            visible_feed = null,
+            updating_articles = false,
+            first_run = true,
+            fetch_timeout = 5000,
+            show_type = 0,
+            open_article = null,
+            offset = 0,
+            limit = 20,
+            last_count = 0;
 
         let lastPromise = Promise.resolve();
 
@@ -149,12 +157,12 @@
 
         async function fetch_feeds() {
             return fetch("/fetch_feeds", {
-                    "method": "POST",
-                    "headers": {
-                        "Content-Type": "application/json"
-                    },
-                    signal: AbortSignal.timeout(fetch_timeout),
-                });
+                "method": "POST",
+                "headers": {
+                    "Content-Type": "application/json"
+                },
+                signal: AbortSignal.timeout(fetch_timeout),
+            });
         }
 
         async function get_feeds() {
@@ -165,7 +173,7 @@
             return Promise.resolve(result)
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -189,8 +197,7 @@
                         data.forEach(entry => {
                             html += '<option value="' + entry.id + '">' + entry.title + '</option>';
                         });
-                    }
-                    catch (error){
+                    } catch (error) {
                         // feed list is empty
                     }
                     $('#active_feed').html(html);
@@ -240,50 +247,66 @@
             let midnight = new Date(date.getTime());
             midnight.setHours(0, 0, 0, 0);
             // using 'Intl.DateTimeFormat' provides an easier way to format the published date. 'navigator.language' should make the format recogniseable to the user i.e. US, UK, FR...
-            const long_formatter = new Intl.DateTimeFormat(navigator.language, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false});
-            const medium_formatter = new Intl.DateTimeFormat(navigator.language, { weekday: "short", hour: '2-digit', minute: '2-digit', hour12: false});
-            const short_formatter = new Intl.DateTimeFormat(navigator.language, { hour: '2-digit', minute: '2-digit', hour12: false});
+            const long_formatter = new Intl.DateTimeFormat(navigator.language, {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            const medium_formatter = new Intl.DateTimeFormat(navigator.language, {
+                weekday: "short",
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            const short_formatter = new Intl.DateTimeFormat(navigator.language, {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
 
             let html = '';
-            for(let i = 0; i < array_of_data.length; i++) {
-                        let entry = array_of_data[i];
-                        // create a string representation of the published date depending on whether it was today, within the last 7 days, or older.
-                        let published = new Date(Date.parse(entry.published));
-                        let published_string = '';
-                        if (published.getTime() < six_days_ago.getTime())
-                            published_string = long_formatter.format(published); // older than 7 days
-                        else if (published.getTime() < midnight.getTime())
-                            published_string = medium_formatter.format(published); // within the last 7 days
-                        else
-                            published_string = short_formatter.format(published); // today
+            for (let i = 0; i < array_of_data.length; i++) {
+                let entry = array_of_data[i];
+                // create a string representation of the published date depending on whether it was today, within the last 7 days, or older.
+                let published = new Date(Date.parse(entry.published));
+                let published_string = '';
+                if (published.getTime() < six_days_ago.getTime())
+                    published_string = long_formatter.format(published); // older than 7 days
+                else if (published.getTime() < midnight.getTime())
+                    published_string = medium_formatter.format(published); // within the last 7 days
+                else
+                    published_string = short_formatter.format(published); // today
 
-                        html += '<div class="accordion-item" id="a' + entry.id + '" data-published-date="' + published.getTime() + '" data-article-id="' + entry.id + '">' +
-                            '<h2 class="accordion-header">';
+                html += '<div class="accordion-item" id="a' + entry.id + '" data-published-date="' + published.getTime() + '" data-article-id="' + entry.id + '">' +
+                    '<h2 class="accordion-header">';
 
-                        html += '<button class="accordion-button collapsed" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
-                            ' data-bs-target="#collapse' + entry.id + '" aria-expanded="false" aria-controls="collapse' + entry.id + '">' +
-                            '<span class="container"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
-                            entry.title + '</span><span id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</span><span class="col col-sm-auto align-items-end ms-auto">';
-                        html += '<span id="s' + entry.id + '" class="badge rounded-pill text-bg-primary';
-                        if (entry.is_read == 1)
-                            html += ' hidebadge" aria-hidden="true';
-                        html += '">New</span>' +
-                            '</span></span></button>' +
-                            '</h2>' +
-                            '<div id="collapse' + entry.id + '" class="accordion-collapse collapse" data-bs-parent="#accordion_articles">' +
-                            '<div class="accordion-body">' +
-                            '<div class="container"><div class="row align-items-start"><div class="col col-10-auto"><p>' + entry.summary + '</p>' +
-                            '<p class="more"><a href="' + entry.link + '" target="_blank" rel="noopener noreferrer">Read more...</a></p></div>';
-                        if (entry.thumb_url != '') {
-                            html += '<div class="col col-4 ml-auto"><img src="' + entry.thumb_url + '" class="img-thumbnail" loading="lazy" height="' + entry.thumb_height + '" width="' + entry.thumb_width + '" alt="' + entry.title + '"></div></div></div>';
-                        } else {
-                            // no image
-                            html += '<div class="col col-sm-auto"></div></div></div>';
-                        }
-                        html += '</div>' +
-                            '</div>' +
-                            '</div>';
-                    };
+                html += '<button class="accordion-button collapsed" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
+                    ' data-bs-target="#collapse' + entry.id + '" aria-expanded="false" aria-controls="collapse' + entry.id + '">' +
+                    '<span class="container"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
+                    entry.title + '</span><span id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</span><span class="col col-sm-auto align-items-end ms-auto">';
+                html += '<span id="s' + entry.id + '" class="badge rounded-pill text-bg-primary';
+                if (entry.is_read == 1)
+                    html += ' hidebadge" aria-hidden="true';
+                html += '">New</span>' +
+                    '</span></span></button>' +
+                    '</h2>' +
+                    '<div id="collapse' + entry.id + '" class="accordion-collapse collapse" data-bs-parent="#accordion_articles">' +
+                    '<div class="accordion-body">' +
+                    '<div class="container"><div class="row align-items-start"><div class="col col-10-auto"><p>' + entry.summary + '</p>' +
+                    '<p class="more"><a href="' + entry.link + '" target="_blank" rel="noopener noreferrer">Read more...</a></p></div>';
+                if (entry.thumb_url != '') {
+                    html += '<div class="col col-4 ml-auto"><img src="' + entry.thumb_url + '" class="img-thumbnail" loading="lazy" height="' + entry.thumb_height + '" width="' + entry.thumb_width + '" alt="' + entry.title + '"></div></div></div>';
+                } else {
+                    // no image
+                    html += '<div class="col col-sm-auto"></div></div></div>';
+                }
+                html += '</div>' +
+                    '</div>' +
+                    '</div>';
+            };
             return html;
         }
 
@@ -326,14 +349,14 @@
             hideTooltips();
             // remove event handlers so that we don't add them more than once.
             $(".accordion-collapse").each(
-            function() {
-                $(this).off('shown.bs.collapse').off('hidden.bs.collapse');
-            });
+                function() {
+                    $(this).off('shown.bs.collapse').off('hidden.bs.collapse');
+                });
             // add event handlers to each collapsible
             $(".accordion-collapse").each(
-            function() {
-                $(this).on('shown.bs.collapse', mark_article_read_event).on('hidden.bs.collapse', hide_article_event);
-            });
+                function() {
+                    $(this).on('shown.bs.collapse', mark_article_read_event).on('hidden.bs.collapse', hide_article_event);
+                });
 
             initialiseTooltips();
         }
@@ -360,7 +383,7 @@
             return Promise.resolve(result)
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -403,7 +426,7 @@
                     else
                         console.log("get_articles: " + error);
                 })
-                .finally(()=> {
+                .finally(() => {
                     $('#status_spinner').hide();
                     updating_articles = false;
                     $('#articles').scrollTop(0);
@@ -415,27 +438,26 @@
             // console.log("sort_articles()::");
             // doing this in the browser is costly, but only a few articles should need sorting.
             var article_list = $(".accordion-item");
-            article_list.sort(function(a, b){
+            article_list.sort(function(a, b) {
                 // sort by descending published date.
-                let sort_result =  $(b).data("published-date") - $(a).data("published-date");
+                let sort_result = $(b).data("published-date") - $(a).data("published-date");
                 // if the articles have the same published date sort by descending id instead.
                 if (sort_result == 0)
                     return $(b).data("article-id") - $(a).data("article-id");
                 else
                     return sort_result;
-                });
+            });
             $('#accordion_articles').html(article_list);
         }
 
-        async function add_new_articles(count = 0, article_ids = null)
-        {
+        async function add_new_articles(count = 0, article_ids = null) {
             // console.log("add_new_articles()::");
             // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start and then sort them.
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -456,10 +478,9 @@
                     hideTooltips();
                     updating_articles = true;
                     let html = '';
-                    for (let i = 0; i < data.length; i++)
-                    {
+                    for (let i = 0; i < data.length; i++) {
                         entry = data[i];
-                        if (! $('#a' + entry.id).exists()) {
+                        if (!$('#a' + entry.id).exists()) {
                             // make sure that it's not a duplicate.
                             html += format_articles(entry);
                         }
@@ -489,7 +510,9 @@
                     return runSequentially(() => {
                         enhance_accordion();
                         toggleMarkFeedReadButton();
-                });
+                    });
+
+                    offset = 0;
 
                 })
                 .catch(error => {
@@ -533,7 +556,7 @@
             Promise.resolve(result)
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -553,22 +576,22 @@
                         toastBootstrap.show();
 
                         if (result instanceof Error)
-                            throw(result);
+                            throw (result);
                         else
                             throw (new TypeError(result));
                     }
 
                     if (result['status'] == "success") {
                         timer = setTimeout(() => {
-                                $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
-                            }, 500);
+                            $("#s" + article_id).addClass('hidebadge').attr('aria-hidden', 'true');
+                        }, 500);
                     }
                 })
-                .catch(error =>  {
-                        if (error instanceof Promise)
-                            console.log("mark_article_read_event: %s", error.toString());
-                        else
-                            console.log("mark_article_read_event: " + error);
+                .catch(error => {
+                    if (error instanceof Promise)
+                        console.log("mark_article_read_event: %s", error.toString());
+                    else
+                        console.log("mark_article_read_event: " + error);
                 });
 
         };
@@ -595,7 +618,7 @@
         }
 
         function hide_article_event(event) {
-            if(updating_articles == true)
+            if (updating_articles == true)
                 return;
 
             // console.log("hide_article_event()::");
@@ -604,7 +627,7 @@
             let article_id = source.id.substring(8);
 
             if (article_id == open_article)
-                    open_article = null;
+                open_article = null;
 
             if (show_type == 0 && $("#s" + article_id).hasClass("hidebadge")) {
                 // only hide the article if show_type is unread
@@ -612,13 +635,16 @@
                     $("div#a" + article_id + '.tooltip').hide();
                     $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
                     toggleMarkFeedReadButton();
-                    if($('div#articles').isScrolledToBottom() && last_count == limit)
+                    if ($('div#articles').isScrolledToBottom() && last_count == limit)
                         $('div#articles').trigger('scroll');
                 }, 750);
             }
 
         };
 
+        $('#inputFeed').on('input', () => {
+            $('#inputFeed').removeClass('is-invalid')
+        });
 
         function showAddFeedModal(event) {
             event.preventDefault();
@@ -650,7 +676,7 @@
                 })
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -704,7 +730,7 @@
             return Promise.resolve(result)
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -760,7 +786,7 @@
                 })
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -851,7 +877,7 @@
                 })
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -882,8 +908,7 @@
                             const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                             $('.toast-body').html('<p>Feed updated.</p>');
                             toastBootstrap.show();
-                        }
-                        else {
+                        } else {
                             const liveToast = document.getElementById('liveToast')
                             const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                             $('.toast-body').html('<p>No new articles.</p>');
@@ -910,17 +935,17 @@
                 return;
 
             let result = await Promise.resolve().then(() => {
-                $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
-                $('#accordion_articles').html('');
-                open_article = null;
-                offset = 0;
-                hideTooltips();
-                visible_feed = $('#active_feed').val();
-                show_type = $('#show_type').val();
-            })
-            .catch(error => {
+                    $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
+                    $('#accordion_articles').html('');
+                    open_article = null;
+                    offset = 0;
+                    hideTooltips();
+                    visible_feed = $('#active_feed').val();
+                    show_type = $('#show_type').val();
+                })
+                .catch(error => {
                     console.log("changeActiveFeed: " + error);
-            });
+                });
 
             result = await runSequentially(() => get_articles());
 
@@ -948,7 +973,7 @@
                 })
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -979,7 +1004,7 @@
 
                     return data;
                 })
-                .catch(error =>  {
+                .catch(error => {
                     console.log("mark_feed_read: " + error);
                 })
         };
@@ -988,6 +1013,16 @@
             event.preventDefault();
             $('#changePasswordModal').modal('show');
         }
+
+        $('#current_password').on('input', () => {
+            $('#current_password').removeClass('is-invalid')
+        });
+        $('#new_password').on('input', () => {
+            $('#current_password').removeClass('is-invalid')
+        });
+        $('#confirm_password').on('input', () => {
+            $('#current_password').removeClass('is-invalid')
+        });
 
         $("#changePasswordModal").on("hide.bs.modal", function() {
             // blur controls to prevent ARIA errors.
@@ -999,9 +1034,6 @@
         });
 
         function clickChangePassword(event) {
-            $('#current_password').removeClass('is-invalid');
-            $('#new_password').removeClass('is-invalid');
-            $('#confirm_password').removeClass('is-invalid');
 
             let data = JSON.stringify({
                 'current_password': $('#current_password').val(),
@@ -1018,7 +1050,7 @@
                 })
                 .then(response => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -1055,8 +1087,7 @@
                             $('div#new_password_feedback').text('New passwords do not match.');
                             $('#new_password').addClass('is-invalid');
                             $('#confirm_password').addClass('is-invalid');
-                        }
-                        else if (data['error'] == 'password blank') {
+                        } else if (data['error'] == 'password blank') {
                             $('div#new_password_feedback').text('New passwords cannot be blank.');
                             $('#new_password').addClass('is-invalid');
                             $('#confirm_password').addClass('is-invalid');
@@ -1081,7 +1112,7 @@
                 })
                 .then(respose => {
                     if (!response)
-                        throw(new TypeError(response));
+                        throw (new TypeError(response));
 
                     if (response.redirected) {
                         window.location.href = response.url;
@@ -1115,19 +1146,21 @@
         }
 
         // add an 'isScrolledToBottom' function to the jQuery object. we're only using this in articlesScrollEvent.
-        jQuery.fn.isScrolledToBottom = function () {
+        jQuery.fn.isScrolledToBottom = function() {
             const element = this.get(0);
             return (Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop) <= 1);
         }
 
         // add an 'exists' function to the jQuery object.
-        jQuery.fn.exists = function () {
+        jQuery.fn.exists = function() {
             return this.length > 0;
         };
 
         async function articlesScrollEvent(event) {
             if (updating_articles == true)
                 return;
+
+            hideTooltips();
 
             // console.log("articlesScrollEvent()::");
             // if we are scrolling fetch another limit articles and add them to the accordion.
@@ -1137,7 +1170,7 @@
                 return Promise.resolve(result)
                     .then(response => {
                         if (!response)
-                        throw(new TypeError(response));
+                            throw (new TypeError(response));
 
                         if (response.redirected) {
                             window.location.href = response.url;
@@ -1156,14 +1189,11 @@
                         if (data instanceof Promise)
                             throw (TypeError(data));
 
-                        hideTooltips();
-
                         last_count = data.length;
                         let html = $('#accordion_articles').html();
-                        for (let i = 0; i < data.length; i++)
-                        {
+                        for (let i = 0; i < data.length; i++) {
                             entry = data[i];
-                            if (! $('#a' + entry.id).exists()) // make sure its not a duplicate.
+                            if (!$('#a' + entry.id).exists()) // make sure its not a duplicate.
                                 html += format_articles(entry);
                         };
                         return html;
