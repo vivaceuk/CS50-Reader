@@ -132,14 +132,14 @@ def change_password():
 
     # check that the current password matches
     if not check_password_hash(hash, current_password):
-        return Response(json.dumps({'status': 'failure', 'error': 'bad password'}), status=400, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'bad password'}), status=200, mimetype='application/json')
 
     if new_password == '' or confirm_password == '':
-        return Response(json.dumps({'status': 'failure', 'error': 'password blank'}), status=400, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'password blank'}), status=200, mimetype='application/json')
 
     # check that the new password and confirmation match each other
     if not new_password == confirm_password:
-        return Response(json.dumps({'status': 'failure', 'error': 'password mismatch'}), status=400, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'password mismatch'}), status=200, mimetype='application/json')
 
     # create a new hash, and update the users table
     new_hash = generate_password_hash(new_password, method='scrypt', salt_length=16)
@@ -157,9 +157,9 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/get_feeds", methods=["POST"])
+@app.route("/fetch_feeds", methods=["POST"])
 @login_required
-def get_feeds():
+def fetch_feeds():
     """ Get the list of feeds """
     user_id = session["user_id"]
     # return the feeds for the current user.
@@ -225,13 +225,13 @@ def add_feed():
 
         if len(f['entries']) == 0:
             # the feed url is bad so we don't have any entries.
-            return Response(json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
         # don't allow duplicate feeds
         result = db.execute(
             "SELECT id FROM feeds WHERE url = ? AND user_id = ? LIMIT 1", feed_url, user_id)
         if len(result) > 0:
-            return Response(json.dumps({'status': 'failure', 'error': 'feed exists'}), status=400, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure', 'error': 'feed exists'}), status=200, mimetype='application/json')
 
         if 'icon' in f.feed:
             image_url = f.feed.get('icon', '')
@@ -245,11 +245,11 @@ def add_feed():
             feed_id = db.execute("INSERT INTO feeds(title, url, description, icon_url, user_id) VALUES(?, ?, ?, ?, ?)",
                                  f.feed.title, feed_url, f.feed.description, image_url, user_id)
         except AttributeError:
-            return Response(json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
         return Response(response=json.dumps({'status': 'success', 'feed_id': feed_id}), status=200, mimetype='application/json')
 
-    return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+    return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
 
 @app.route("/update_feeds", methods=["POST"])
@@ -362,6 +362,10 @@ def update_feeds():
                     published = dateutil.parser.parse(published).isoformat()
                 elif 'pubDate' in art:
                     published = art.get('pubDate')
+                    published = dateutil.parser.parse(published).isoformat()
+
+                elif 'updated' in art:
+                    published = art.get('updated')
                     published = dateutil.parser.parse(published).isoformat()
                 else:
                     published = datetime.now().isoformat()
