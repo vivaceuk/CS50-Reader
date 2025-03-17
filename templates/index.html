@@ -114,6 +114,7 @@
 				</div>
 				</div>
                 <div id="articles" class="articles overflow-auto">
+                    <p id="noarticles" class="text-center fs-5 fw-normal lh-base invisible" aria-hidden="true">No articles to show.</p>
                     <div id="status_spinner" class="position-absolute top-50 start-50 translate-middle">
                         <div class="spinner-border" role="status">
                           <span class="visually-hidden">Loading...</span>
@@ -285,7 +286,7 @@
 
                 html += '<button class="accordion-button collapsed" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
                     ' data-bs-target="#collapse' + entry.id + '" aria-expanded="false" aria-controls="collapse' + entry.id + '">' +
-                    '<span class="container"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
+                    '<span class="container lh-base"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
                     entry.title + '</span><span id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</span><span class="col col-sm-auto align-items-end ms-auto">';
                 html += '<span id="s' + entry.id + '" class="badge rounded-pill text-bg-primary';
                 if (entry.is_read == 1)
@@ -410,14 +411,20 @@
 
                     html += format_articles(data);
 
-                    html += '</div>';
-
                     $('#accordion_articles').html(html);
                     return data;
                 })
                 .then(data => {
-                    enhance_accordion();
-                    toggleMarkFeedReadButton();
+                    if (data.length) {
+                        $('#noarticles').attr('aria-hidden', 'true');
+                        $('#noarticles').removeClass('visible').addClass('invisible').hide();
+                        enhance_accordion();
+                        toggleMarkFeedReadButton();
+                    }
+                    else {
+                        $('#noarticles').attr('aria-hidden', 'false');
+                        $('#noarticles').removeClass('invisible').addClass('visible').show();
+                    }
                     return data;
                 })
                 .catch(error => {
@@ -936,10 +943,12 @@
 
             let result = await Promise.resolve().then(() => {
                     $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
+                    hideTooltips();
                     $('#accordion_articles').html('');
+                    $('#noarticles').attr('aria-hidden', 'true');
+                    $('#noarticles').removeClass('visible').addClass('invisible').hide();
                     open_article = null;
                     offset = 0;
-                    hideTooltips();
                     visible_feed = $('#active_feed').val();
                     show_type = $('#show_type').val();
                 })
@@ -957,8 +966,6 @@
             event.preventDefault();
             if (show_type != 0)
                 return;
-
-            hideTooltips();
 
             data = JSON.stringify({
                 'feed_id': visible_feed,
@@ -994,6 +1001,7 @@
 
                     if (data['status'] == 'success') {
                         offset = 0;
+                        hideTooltips();
                         $('#accordion_articles').html('');
                         $('#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
                         const liveToast = document.getElementById('liveToast');
@@ -1229,6 +1237,8 @@
             $('#change_password').on('click', showChangePasswordModal);
             $('#btnChangePassword').on('click', clickChangePassword);
             $('#articles').on('scroll', articlesScrollEvent);
+
+            $('#noarticles').hide();
 
             // check for new articles every 15 minutes
             window.setInterval(update_feeds, 900000);
