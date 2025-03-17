@@ -363,7 +363,6 @@ def update_feeds():
                 elif 'pubDate' in art:
                     published = art.get('pubDate')
                     published = dateutil.parser.parse(published).isoformat()
-
                 elif 'updated' in art:
                     published = art.get('updated')
                     published = dateutil.parser.parse(published).isoformat()
@@ -420,7 +419,7 @@ def delete_feed():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
 
 @app.route("/mark_article_read", methods=["POST"])
@@ -438,7 +437,7 @@ def toggle_article_read():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
 
 @app.route("/mark_feed_read", methods=["POST"])
@@ -457,7 +456,7 @@ def mark_feed_read():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
 
 
 @app.route("/compact_db", methods=["POST"])
