@@ -132,14 +132,14 @@ def change_password():
 
     # check that the current password matches
     if not check_password_hash(hash, current_password):
-        return Response(json.dumps({'status': 'failure', 'error': 'bad password'}), status=200, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'bad password'}), status=400, mimetype='application/json')
 
     if new_password == '' or confirm_password == '':
-        return Response(json.dumps({'status': 'failure', 'error': 'password blank'}), status=200, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'password blank'}), status=400, mimetype='application/json')
 
     # check that the new password and confirmation match each other
     if not new_password == confirm_password:
-        return Response(json.dumps({'status': 'failure', 'error': 'password mismatch'}), status=200, mimetype='application/json')
+        return Response(json.dumps({'status': 'failure', 'error': 'password mismatch'}), status=400, mimetype='application/json')
 
     # create a new hash, and update the users table
     new_hash = generate_password_hash(new_password, method='scrypt', salt_length=16)
@@ -225,13 +225,13 @@ def add_feed():
 
         if len(f['entries']) == 0:
             # the feed url is bad so we don't have any entries.
-            return Response(json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
         # don't allow duplicate feeds
         result = db.execute(
             "SELECT id FROM feeds WHERE url = ? AND user_id = ? LIMIT 1", feed_url, user_id)
         if len(result) > 0:
-            return Response(json.dumps({'status': 'failure', 'error': 'feed exists'}), status=200, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure', 'error': 'feed exists'}), status=400, mimetype='application/json')
 
         if 'icon' in f.feed:
             image_url = f.feed.get('icon', '')
@@ -245,11 +245,11 @@ def add_feed():
             feed_id = db.execute("INSERT INTO feeds(title, url, description, icon_url, user_id) VALUES(?, ?, ?, ?, ?)",
                                  f.feed.title, feed_url, f.feed.description, image_url, user_id)
         except AttributeError:
-            return Response(json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+            return Response(json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
         return Response(response=json.dumps({'status': 'success', 'feed_id': feed_id}), status=200, mimetype='application/json')
 
-    return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+    return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
 
 @app.route("/update_feeds", methods=["POST"])
@@ -384,7 +384,8 @@ def update_feeds():
                 for image in images:
                     image['loading'] = 'lazy'
 
-                content = str(soup)
+                soup = soup.html.unwrap()
+                content = str(soup.body.unwrap())
             except:
                 pass
 
@@ -399,7 +400,7 @@ def update_feeds():
     if count > 0:
         return Response(response=json.dumps({'status': 'success', 'count': count, 'article_ids': article_ids}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'unchanged', 'count': 0, 'article_ids': []}), status=200, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'unchanged', 'count': 0, 'article_ids': []}), status=304, mimetype='application/json')
 
 
 @app.route("/delete_feed", methods=["POST"])
@@ -419,12 +420,12 @@ def delete_feed():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
 
 @app.route("/mark_article_read", methods=["POST"])
 @login_required
-def toggle_article_read():
+def mark_article_read():
     """ Mark the specified article as read """
     user_id = session["user_id"]
     request_data = request.get_json()
@@ -437,7 +438,7 @@ def toggle_article_read():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
 
 @app.route("/mark_feed_read", methods=["POST"])
@@ -456,7 +457,7 @@ def mark_feed_read():
     if result:
         return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
     else:
-        return Response(response=json.dumps({'status': 'failure'}), status=200, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
 
 @app.route("/compact_db", methods=["POST"])
