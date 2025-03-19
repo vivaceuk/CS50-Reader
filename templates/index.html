@@ -114,7 +114,7 @@
 				</div>
 				</div>
                 <div id="articles" class="articles overflow-auto">
-                    <p id="noarticles" class="text-center fs-5 fw-normal lh-base invisible" aria-hidden="true">No articles to show.</p>
+                    <p id="noarticles" class="text-center fs-6 fw-normal lh-base invisible" aria-hidden="true">No articles to show.</p>
                     <div id="status_spinner" class="position-absolute top-50 start-50 translate-middle">
                         <div class="spinner-border" role="status">
                           <span class="visually-hidden">Loading...</span>
@@ -137,6 +137,28 @@
 		  </div>
 		</div>
     <script>
+        class HttpError extends Error {
+            constructor(code, message, options) {
+                super(message, options);
+                this.code = code;
+            }
+        };
+
+
+        class BadRequestError extends HttpError {
+            constructor(message, options = {}) {
+                super(400, message, options);
+                this.name = 'BadRequestError';
+            }
+        };
+
+        class InternalServerError extends HttpError {
+            constructor(message, options = {}) {
+                super(500, message, options);
+                this.name = 'InternalServerError';
+            }
+        };
+
         let timer = null,
             visible_feed = null,
             updating_articles = false,
@@ -184,6 +206,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -192,6 +228,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (Error(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     let html = '';
                     try {
@@ -394,6 +433,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -402,6 +455,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (new TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     hideTooltips();
 
@@ -474,6 +530,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -482,6 +552,10 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (new TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
+
                     hideTooltips();
                     updating_articles = true;
                     let html = '';
@@ -573,20 +647,25 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     return response;
                 })
                 .then(result => {
-                    if (result instanceof Error || result instanceof Promise) {
-                        const liveToast = document.getElementById('liveToast')
-                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
-                        $('.toast-body').html('<p>Error: Unable to mark article read.</p>');
-                        toastBootstrap.show();
-
-                        if (result instanceof Error)
-                            throw (result);
-                        else
-                            throw (new TypeError(result));
-                    }
+                    if (result instanceof Error)
+                        throw (result);
 
                     if (result['status'] == "success") {
                         timer = setTimeout(() => {
@@ -599,6 +678,11 @@
                         console.log("mark_article_read_event: %s", error.toString());
                     else
                         console.log("mark_article_read_event: " + error);
+
+                    const liveToast = document.getElementById('liveToast')
+                    const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                    $('.toast-body').html('<p>Error: Unable to mark article read.</p>');
+                    toastBootstrap.show();
                 });
 
         };
@@ -693,6 +777,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -713,9 +811,9 @@
                         toastBootstrap.show();
                         visible_feed = data['feed_id'];
 
-                    } else {
-                        $('#inputFeed').addClass('is-invalid');
-                    }
+                    } else
+                        throw (new BadRequestError(data['error_type_message'], { cause: data['error']}));
+
                     return data;
                 })
                 .then(data => {
@@ -727,6 +825,8 @@
                 })
                 .catch(error => {
                     console.log("clickAddFeed: " + error);
+                    if (error instanceof BadRequestError)
+                        $('#inputFeed').addClass('is-invalid');
                 });
         };
 
@@ -803,6 +903,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -811,6 +925,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     if (data['status'] == 'success') {
                         $('#btnDeleteFeed').trigger('blur');
@@ -823,6 +940,8 @@
                         $('.toast-body').html('<p>Feed deleted.</p>');
                         toastBootstrap.show();
                     }
+                    else
+                        throw (new BadRequestError("Bad Request."));
                     return data;
                 })
                 .then(data => {
@@ -849,6 +968,11 @@
                 })
                 .catch(error => {
                     console.log("clickDeleteFeed: " + error);
+
+                    const liveToast = document.getElementById('liveToast');
+                    const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                    $('.toast-body').html('<p>Error: Unable to delete feed.</p>');
+                    toastBootstrap.show();
                 });
         };
 
@@ -894,6 +1018,17 @@
                         return response.json();
                     }
 
+                    if (response.status == 304) {
+                        return {'status': 'unchanged'};
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -902,6 +1037,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     if (visible_feed != null && feed_id == visible_feed) {
                         if (data['status'] == 'success' && data['count'] > 0) {
@@ -927,6 +1065,11 @@
                 })
                 .catch(error => {
                     console.log("update_feed: " + error + " feed id: " + feed_id);
+
+                    const liveToast = document.getElementById('liveToast')
+                    const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                    $('.toast-body').html('<p>Error: Unable to update articles.</p>');
+                    toastBootstrap.show();
                 });
         }
 
@@ -990,6 +1133,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -998,6 +1155,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     if (data['status'] == 'success') {
                         offset = 0;
@@ -1009,28 +1169,25 @@
                         $('.toast-body').html('<p>Feed Marked Read.</p>');
                         toastBootstrap.show();
                     }
+                    else
+                        throw(new BadRequestError("Bad Request."));
 
                     return data;
                 })
                 .catch(error => {
-                    console.log("mark_feed_read: " + error);
+                    console.log("mark_feed_read: " + error + "\r\n " + error.cause);
+
+                    const liveToast = document.getElementById('liveToast');
+                    const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                    $('.toast-body').html('<p>Error: Unable to mark feed read.</p>');
+                    toastBootstrap.show();
                 })
         };
 
         function showChangePasswordModal(event) {
             event.preventDefault();
             $('#changePasswordModal').modal('show');
-        }
-
-        $('#current_password').on('input', () => {
-            $('#current_password').removeClass('is-invalid')
-        });
-        $('#new_password').on('input', () => {
-            $('#current_password').removeClass('is-invalid')
-        });
-        $('#confirm_password').on('input', () => {
-            $('#current_password').removeClass('is-invalid')
-        });
+        };
 
         $("#changePasswordModal").on("hide.bs.modal", function() {
             // blur controls to prevent ARIA errors.
@@ -1068,6 +1225,20 @@
                         return response.json();
                     }
 
+                    if (response.status == 400) {
+                        let result = response.json();
+                        result.then((result) => {
+                            throw (new BadRequestError('Bad Request Error', { cause: result['error']}));
+                        });
+                    }
+
+                    if (response.status == 500) {
+                        let result = response.text();
+                        result.then((result) => {
+                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        });
+                    }
+
                     if (response instanceof Error)
                         throw (response);
 
@@ -1078,36 +1249,48 @@
                         throw (TypeError(data));
 
                     if (data['status'] == 'success') {
-                        $('#btnChangePassword').trigger('blur');
-                        $('#btnChangePasswordCancel').trigger('blur');
-                        $('#current_password').trigger('blur');
-                        $('#new_password').trigger('blur');
-                        $('#confirm_password').trigger('blur');
                         $('#changePasswordModal').modal('hide');
                         const liveToast = document.getElementById('liveToast')
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                         $('.toast-body').html('<p>Password changed.</p>');
                         toastBootstrap.show();
-                    } else {
-                        if (data['error'] == 'bad password')
-                            $('#current_password').addClass('is-invalid');
-                        else if (data['error'] == 'password mismatch') {
-                            $('div#new_password_feedback').text('New passwords do not match.');
-                            $('#new_password').addClass('is-invalid');
-                            $('#confirm_password').addClass('is-invalid');
-                        } else if (data['error'] == 'password blank') {
-                            $('div#new_password_feedback').text('New passwords cannot be blank.');
-                            $('#new_password').addClass('is-invalid');
-                            $('#confirm_password').addClass('is-invalid');
-                        }
                     }
+                    else
+                        throw (new BadRequestError(data['error_type_message'], { cause: data['error']}));
 
                     return data;
                 })
                 .catch(error => {
                     console.log("clickChangePassword: " + error);
+                    if (error instanceof BadRequestError) {
+                        if (error.cause == 'bad password')
+                            $('#current_password').addClass('is-invalid');
+                        else if (error.cause  == 'password mismatch') {
+                            $('div#new_password_feedback').text('New passwords do not match.');
+                            $('#new_password').addClass('is-invalid');
+                            $('#confirm_password').addClass('is-invalid');
+                        } else if (error.cause  == 'password blank') {
+                            $('div#new_password_feedback').text('New passwords cannot be blank.');
+                            $('#new_password').addClass('is-invalid');
+                            $('#confirm_password').addClass('is-invalid');
+                        }
+                    }
                 });
         }
+
+        $('#current_password').on('input', () => {
+            $('#current_password').removeClass('is-invalid');
+        });
+
+        $('#new_password').on('input', () => {
+            $('#new_password').removeClass('is-invalid');
+            $('#confirm_password').removeClass('is-invalid');
+        });
+
+        $('#confirm_password').on('input', () => {
+            $('#confirm_password').removeClass('is-invalid');
+            $('#new_password').removeClass('is-invalid');
+        });
 
         async function compact_db() {
             return fetch("/compact_db", {
