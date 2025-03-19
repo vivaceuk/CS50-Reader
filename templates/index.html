@@ -208,15 +208,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -435,15 +435,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -532,15 +532,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -649,15 +649,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -779,15 +779,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -799,6 +799,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     if (data['status'] == 'success') {
                         $('#inputFeed').trigger('blur').removeClass('is-invalid');
@@ -905,15 +908,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -1135,15 +1138,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -1227,15 +1230,15 @@
 
                     if (response.status == 400) {
                         let result = response.json();
-                        result.then((result) => {
-                            throw (new BadRequestError('Bad Request Error', { cause: result['error']}));
+                        return result.then((result) => {
+                            return new BadRequestError('Bad Request Error', { cause: result['error']});
                         });
                     }
 
                     if (response.status == 500) {
                         let result = response.text();
-                        result.then((result) => {
-                            throw (new InternalServerError('Internal Server Error', { cause: result}));
+                        return result.then((result) => {
+                            return new InternalServerError('Internal Server Error', { cause: result});
                         });
                     }
 
@@ -1247,6 +1250,9 @@
                 .then(data => {
                     if (data instanceof Promise)
                         throw (TypeError(data));
+
+                    if (data instanceof Error)
+                        throw (data);
 
                     if (data['status'] == 'success') {
                         $('#changePasswordModal').modal('hide');
