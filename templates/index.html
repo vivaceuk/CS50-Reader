@@ -163,7 +163,7 @@
             visible_feed = null,
             updating_articles = false,
             first_run = true,
-            fetch_timeout = 5000,
+            fetch_timeout = 10000,
             show_type = 0,
             open_article = null,
             offset = 0,
@@ -253,6 +253,7 @@
                             feed_to_show = $("div#feeds select#active_feed option:first").val();
 
                         $("div#feeds select#active_feed option[value=" + feed_to_show + "]").attr('selected','selected');
+                        $("div#articles_header select#show_type option").removeAttr('selected');
                         $("div#articles_header select#show_type option[value=0]").attr('selected','selected');
                     }
                     return data;
@@ -992,14 +993,12 @@
             let data = null,
                 result = '';
 
-            if (feed_id)
-                data = JSON.stringify({
-                    'feed_id': feed_id,
-                });
-            else
-                data = JSON.stringify({});
 
-            return fetch("/update_feeds", {
+            data = JSON.stringify({
+                'feed_id': feed_id,
+            });
+
+            return fetch("/update_feed", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -1054,23 +1053,24 @@
                             const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                             $('.toast-body').html('<p>Feed updated.</p>');
                             toastBootstrap.show();
-                        } else {
+                        }  else if (data['status'] == 'unchanged') {
                             const liveToast = document.getElementById('liveToast')
                             const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
                             $('.toast-body').html('<p>No new articles.</p>');
                             toastBootstrap.show();
+                        } else {
+                            const liveToast = document.getElementById('liveToast')
+                            const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                            $('.toast-body').html('<p>Error: Unable to update articles.</p>');
+                            toastBootstrap.show();
                         }
+
                     }
 
                     return data;
                 })
                 .catch(error => {
                     console.log("update_feed: " + error + " feed id: " + feed_id);
-
-                    const liveToast = document.getElementById('liveToast')
-                    const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
-                    $('.toast-body').html('<p>Error: Unable to update articles.</p>');
-                    toastBootstrap.show();
                 });
         }
 
