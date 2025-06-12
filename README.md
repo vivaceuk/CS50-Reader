@@ -20,4 +20,4 @@ To get started with CS50-Reader, follow these steps:
    pip install -r requirements.txt
 3. **Run the Application**:
    ```bash
-   flask run
+   flask --app cs50reader run --debug
