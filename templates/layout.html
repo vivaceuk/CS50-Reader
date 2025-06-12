@@ -14,10 +14,9 @@
         <!-- jQuery -->
         <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8=" crossorigin="anonymous"></script>
 
-        <!-- https://favicon.io/emoji-favicons/money-bag/ -->
-        <link href="/static/favicon.ico" rel="icon">
+        <link href="{{ url_for('static', filename='favicon.ico') }}" rel="icon">
 
-        <link href="/static/styles.css" rel="stylesheet">
+        <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
 
         <title>CS50 Reader: {% block title %}{% endblock %}</title>
 
@@ -34,19 +33,17 @@
                 <div class="collapse navbar-collapse" id="navbar">
                     {% if session["user_id"] %}
                         <ul class="navbar-nav me-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" id="add_feed" href="/add_feed">Add Feed</a></li>
-                            <li class="nav-item"><a class="nav-link" id="delete_feed" href="/delete_feed">Delete Feed</a></li>
-                            <li class="nav-item"><a class="nav-link" id="refresh_feeds" href="/refresh_feeds">Refresh Feeds</a></li>
-
+                            <li class="nav-item"><a class="nav-link" id="add_feed" href="{{ url_for('feed.add_feed') }}">Add Feed</a></li>
+                            <li class="nav-item"><a class="nav-link" id="delete_feed" href="{{ url_for('feed.delete_feed') }}">Delete Feed</a></li>
                         </ul>
                         <ul class="navbar-nav ms-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" id="change_password" href="/change_password">Change Password</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
+                            <li class="nav-item"><a class="nav-link" id="change_password" href="{{ url_for('auth.change_password') }}">Change Password</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Log Out</a></li>
                         </ul>
                     {% else %}
                         <ul class="navbar-nav ms-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.register') }}">Register</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Log In</a></li>
                         </ul>
                     {% endif %}
                 </div>
@@ -69,7 +66,7 @@
             <form action="https://validator.w3.org/check" class="text-center" enctype="multipart/form-data" method="post" target="_blank">
                 <input name="doctype" type="hidden" value="HTML5">
                 <input name="fragment" type="hidden">
-                <input alt="Validate" src="/static/I_heart_validator.png" type="image"> <!-- https://validator.w3.org/ -->
+                <input alt="Validate" src="{{ url_for('static', filename='I_heart_validator.png') }}" type="image"> <!-- https://validator.w3.org/ -->
             </form>
             <script>
                 document.addEventListener('DOMContentLoaded', function() {

@@ -114,7 +114,7 @@
 				</div>
 				</div>
                 <div id="articles" class="articles overflow-auto">
-                    <p id="noarticles" class="text-center fs-6 fw-normal lh-base invisible" aria-hidden="true" style="visibility: hidden; display: none">No articles to show.</p>
+                    <p id="noarticles" class="text-center fs-6 fw-normal lh-base invisible" aria-hidden="true" style="display: none">No articles to show.</p>
                     <div id="status_spinner" class="position-absolute top-50 start-50 translate-middle">
                         <div class="spinner-border" role="status">
                           <span class="visually-hidden">Loading...</span>
@@ -159,11 +159,19 @@
             }
         };
 
+        jQuery.fn.visible = function() {
+            return this.css('visibility', 'visible');
+        };
+
+        jQuery.fn.invisible = function() {
+            return this.css('visibility', 'hidden');
+        };
+
         let timer = null,
             visible_feed = null,
             updating_articles = false,
             first_run = true,
-            fetch_timeout = 10000,
+            fetch_timeout = 60000,
             show_type = 0,
             open_article = null,
             offset = 0,
@@ -179,7 +187,7 @@
         }
 
         async function fetch_feeds() {
-            return fetch("/fetch_feeds", {
+            return fetch("{{ url_for('feed.fetch_feeds') }}", {
                 "method": "POST",
                 "headers": {
                     "Content-Type": "application/json"
@@ -190,9 +198,9 @@
 
         async function get_feeds() {
             // console.log("get_feeds()::");
+
             // load the feeds for the current user.
             let result = await fetch_feeds();
-
             return Promise.resolve(result)
                 .then(response => {
                     if (!response)
@@ -271,6 +279,12 @@
                 })
                 .catch(error => {
                     console.log("get_feeds: " + error);
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 })
         };
 
@@ -324,12 +338,12 @@
                     published_string = short_formatter.format(published); // today
 
                 html += '<div class="accordion-item" id="a' + entry.id + '" data-published-date="' + published.getTime() + '" data-article-id="' + entry.id + '">' +
-                    '<h2 class="accordion-header">';
+                    '<h2 class="accordion-header flex-nowrap">';
 
-                html += '<button class="accordion-button collapsed" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
+                html += '<button class="accordion-button collapsed mb-1 p-3" type="button" id="b' + entry.id + '" data-bs-toggle="collapse"' +
                     ' data-bs-target="#collapse' + entry.id + '" aria-expanded="false" aria-controls="collapse' + entry.id + '">' +
-                    '<span class="container lh-base"><span class="row align-items-start"><span class="col col-bg-auto text-truncate" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
-                    entry.title + '</span><span id="p' + entry.id + '" class="col col-sm-auto align-items-end ms-auto">' + published_string + '</span><span class="col col-sm-auto align-items-end ms-auto">';
+                    '<span id="accordion-title" class="container lh-base align-bottom"><span class="row lh-base"><span class="col col-9 col-lg text-truncate text-nowrap overflow-hidden lh-base align-middle" data-bs-toggle="tooltip" data-bs-title="' + entry.title + '">' +
+                    entry.title + '</span><span id="p' + entry.id + '" class="col col-sm col-sm-auto align-items-end text-nowrap overflow-hidden lh-base align-bottom">' + published_string + '</span><span class="col col-sm col-sm-auto align-items-end text-nowrap overflow-hidden lh-base align-bottom">';
                 html += '<span id="s' + entry.id + '" class="badge rounded-pill text-bg-primary';
                 if (entry.is_read == 1)
                     html += ' hidebadge" aria-hidden="true';
@@ -357,7 +371,7 @@
             // console.log("fetch_articles()::");
             // fetch limit articles from the server starting at offset.
             // if article_ids is supplied, ignore limit and offset and fetch those articles.
-            return fetch("/fetch_articles", {
+            return fetch("{{ url_for('feed.fetch_articles') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -373,6 +387,12 @@
                 })
                 .catch(error => {
                     console.log("fetch_articles: " + error);
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                     return error;
                 });
         }
@@ -412,11 +432,12 @@
         async function get_articles() {
             // console.log("get_articles()::");
             // populate the articles div.
-            if (visible_feed == null)
+            if (visible_feed == null || visible_feed == 0)
                 return;
 
             $('div#articles p#noarticles').attr('aria-hidden', 'true').removeClass('visible').addClass('invisible').hide();
             $('div#articles div#status_spinner').show();
+            $('div#articles div#accordion_articles').invisible();
 
             const result = await fetch_articles();
 
@@ -461,7 +482,7 @@
 
                     hideTooltips();
                     $("div#articles div#accordion_articles div[id^='a'].accordion-item .accordion-collapse").off('shown.bs.collapse').off('hidden.bs.collapse');
-
+                    $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
                     updating_articles = true;
                     last_count = data.length;
                     let html = '';
@@ -470,6 +491,7 @@
 
                     $('div#articles div#status_spinner').hide();
                     $('div#articles div#accordion_articles').html(html);
+                    $('div#articles div#accordion_articles').visible();
                     return data;
                 })
                 .then(data => {
@@ -484,6 +506,12 @@
                         console.log("get_articles: %s", error.toString());
                     else
                         console.log("get_articles: " + error);
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 })
                 .finally(() => {
                     $('div#articles div#status_spinner').hide();
@@ -507,12 +535,17 @@
                 else
                     return sort_result;
             });
+            $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
             $('div#articles div#accordion_articles').html(article_list);
         }
 
-        async function add_new_articles(count = 0, article_ids = null) {
+        async function add_new_articles(count = 0, article_ids = null, updated_articles = []) {
             // console.log("add_new_articles()::");
+            $('div#articles div#status_spinner').show();
             // reloading the whole accordion is a bit drastic, so we'll just add the new articles at the start and then sort them.
+            for(val in updated_articles)
+                $("div#a" + val).off('shown.bs.collapse').off('hidden.bs.collapse').remove(); // .hide()
+
             const result = await fetch_articles(limit, offset, article_ids);
             return Promise.resolve(result)
                 .then(response => {
@@ -555,6 +588,7 @@
 
                     hideTooltips();
                     $("div#articles div#accordion_articles div[id^='a'].accordion-item .accordion-collapse").off('shown.bs.collapse').off('hidden.bs.collapse');
+                    $('div#articles div#accordion_articles').invisible();
                     updating_articles = true;
                     let html = '';
                     for (let i = 0; i < data.length; i++) {
@@ -597,8 +631,16 @@
                         console.log("add_new_articles: %s", error.toString());
                     else
                         console.log("add_new_articles: " + error);
+                    if (error.name ==  'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 })
                 .finally(() => {
+                    $('div#articles div#status_spinner').hide();
+                    $('div#articles div#accordion_articles').visible();
                     updating_articles = false;
                     toggleMarkFeedReadButton();
                 });
@@ -691,7 +733,7 @@
                 'article_id': article_id,
             });
 
-            return fetch("/mark_article_read", {
+            return fetch("{{ url_for('article.mark_article_read') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -720,8 +762,9 @@
             if (show_type == 0 && $("div#articles div#accordion_articles div[id^='a'].accordion-item h2.accordion-header button span#s" + article_id).hasClass("hidebadge")) {
                 // only hide the article if show_type is unread
                 timer = setTimeout(() => {
-                    $("div#a" + article_id + '.tooltip').hide();
-                    $("div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').hide();
+                    $("div#articles div#accordion_articles div#a" + article_id + '.tooltip').hide().remove();
+                    $("div#articles div#accordion_articles div#a" + article_id).off('shown.bs.collapse').off('hidden.bs.collapse').remove(); // .hide()
+                    hideTooltips();
                     toggleMarkFeedReadButton();
                     if ($('div#articles').isScrolledToBottom() && last_count == limit)
                         $('div#articles').trigger('scroll');
@@ -752,7 +795,7 @@
 
         function clickAddFeed(event) {
             $('div#addFeedModal input#inputFeed').removeClass('is-invalid');
-            return fetch("/add_feed", {
+            return fetch("{{ url_for('feed.add_feed') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -829,6 +872,12 @@
                     console.log("clickAddFeed: " + error);
                     if (error instanceof BadRequestError)
                         $('div#addFeedModal input#inputFeed').addClass('is-invalid');
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 });
         };
 
@@ -883,7 +932,7 @@
 
         function clickDeleteFeed(event) {
             let feed_id = $('div#deleteFeedModal select#selectFeed').val();
-            return fetch("/delete_feed", {
+            return fetch("{{ url_for('feed.delete_feed') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -950,6 +999,7 @@
                     if (data['status'] == 'success' && feed_id == visible_feed) {
                         visible_feed = null;
                         open_article = null;
+                        $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
                         $('div#articles div#accordion_articles').html('');
                     }
                     return data;
@@ -993,12 +1043,14 @@
             let data = null,
                 result = '';
 
+            if (show_type != 1 && visible_feed != null && feed_id == visible_feed)
+                $('div#articles div#status_spinner').show();
 
             data = JSON.stringify({
                 'feed_id': feed_id,
             });
 
-            return fetch("/update_feed", {
+            return fetch("{{ url_for('feed.update_feed') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -1044,7 +1096,7 @@
                     if (visible_feed != null && feed_id == visible_feed) {
                         if (data['status'] == 'success' && data['count'] > 0) {
                             if (first_run != true)
-                                add_new_articles(data['count'], data['article_ids']);
+                                add_new_articles(data['count'], data['article_ids'], data['updated_articles']);
                             else {
                                 get_articles();
                                 first_run = false;
@@ -1071,13 +1123,16 @@
                 })
                 .catch(error => {
                     console.log("update_feed: " + error + " feed id: " + feed_id);
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
+                })
+                .finally(() => {
+                    $('div#articles div#status_spinner').hide();
                 });
-        }
-
-
-        function clickRefreshFeeds(event) {
-            event.preventDefault();
-            update_feeds();
         }
 
         async function changeActiveFeed(event) {
@@ -1089,6 +1144,7 @@
                     $('div#articles_header a#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
                     hideTooltips();
                     $("div#articles div#accordion_articles div[id^='a'].accordion-item .accordion-collapse").off('shown.bs.collapse').off('hidden.bs.collapse');
+                    $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
                     $('div#articles div#accordion_articles').html('');
                     toggleMarkFeedReadButton();
                 })
@@ -1100,12 +1156,13 @@
                     if (new_visible_feed != visible_feed)
                         show_type = 0;
 
+                    $show_type = $("div#articles_header select#show_type")
                     $("div#articles_header select#show_type option").removeAttr('selected');
                     $("div#articles_header select#show_type option[value=" + show_type + "]").attr('selected','selected');
 
                     visible_feed = new_visible_feed;
                     $("div#feeds select#active_feed option").removeAttr('selected');
-                    $("div#feeds select#active_feed option[value=" + visible_feed + "]").attr('selected','selected');
+                    $("div#feeds select#active_feed option[value=" + visible_feed + "]").attr('selected','selected').trigger('change.$show_type');
                 })
                 .catch(error => {
                     console.log("changeActiveFeed: " + error);
@@ -1125,7 +1182,7 @@
             data = JSON.stringify({
                 'feed_id': visible_feed,
             });
-            return fetch("/mark_feed_read", {
+            return fetch("{{ url_for('feed.mark_feed_read') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -1175,6 +1232,7 @@
                         offset = 0;
                         hideTooltips();
                         $("div#articles div#accordion_articles .accordion-collapse").off('shown.bs.collapse').off('hidden.bs.collapse');
+                        $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
                         $('div#articles div#accordion_articles').html('');
 
                         const liveToast = document.getElementById('liveToast');
@@ -1221,7 +1279,7 @@
                 'new_password': $('div#changePasswordModal input#new_password').val(),
                 'confirm_password': $('div#changePasswordModal input#confirm_password').val(),
             });
-            return fetch("/change_password", {
+            return fetch("{{ url_for('auth.change_password') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -1294,6 +1352,12 @@
                             $('div#changePasswordModal input#confirm_password').addClass('is-invalid');
                         }
                     }
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 });
         }
 
@@ -1312,7 +1376,7 @@
         });
 
         async function compact_db() {
-            return fetch("/compact_db", {
+            return fetch("{{ url_for('util.compact_db') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -1320,7 +1384,7 @@
                     "body": "",
                     signal: AbortSignal.timeout(fetch_timeout),
                 })
-                .then(respose => {
+                .then(response => {
                     if (!response)
                         throw (new TypeError(response));
 
@@ -1339,6 +1403,12 @@
                 })
                 .catch(error => {
                     console.log("compact_db: " + error);
+                    if (error.name == 'TimeoutError') {
+                        const liveToast = document.getElementById('liveToast')
+                        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                        $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                        toastBootstrap.show();
+                    }
                 });
         }
 
@@ -1423,6 +1493,12 @@
                     .catch(error => {
                         last_count = 0;
                         console.log("articlesScrollEvent: " + error);
+                        if (error.name == 'TimeoutError') {
+                            const liveToast = document.getElementById('liveToast')
+                            const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
+                            $('.toast-body').html('<p>Error: Connection timed out.</p>');
+                            toastBootstrap.show();
+                        }
                     })
                     .finally(() => {
                         updating_articles == false;
@@ -1436,7 +1512,6 @@
             $(window).on('resize', resizeEvent);
             $('div#navbar a#add_feed').on('click', showAddFeedModal);
             $('div#navbar a#delete_feed').on('click', showDeleteFeedModal);
-            $('div#navbar a#refresh_feeds').on('click', clickRefreshFeeds);
             $('div#addFeedModal button#btnAddFeed').on('click', clickAddFeed);
             $('div#deleteFeedModal button#btnDeleteFeed').on('click', clickDeleteFeed);
             $('div#feeds select#active_feed').on('change', changeActiveFeed);

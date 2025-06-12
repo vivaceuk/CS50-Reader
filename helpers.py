@@ -1,7 +1,7 @@
 import requests
 import math
 
-from flask import redirect, render_template, session
+from flask import redirect, render_template, session, current_app, url_for
 from functools import wraps
 
 
@@ -53,7 +53,7 @@ def apology(message, code=400):
 
 def login_required(f):
     """
-    Decorate routes to require login.
+    Decorate routes to require login. Adjusted to allow async.
 
     https://flask.palletsprojects.com/en/latest/patterns/viewdecorators/
     """
@@ -61,8 +61,8 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if session.get("user_id") is None:
-            return redirect("/login")
-        return f(*args, **kwargs)
+            return redirect(url_for("auth.login"))
+        return current_app.ensure_sync(f)(*args, **kwargs)
 
     return decorated_function
 

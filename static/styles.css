@@ -28,8 +28,8 @@ td, th
 .articles
 {
     height: 70vh;
+    overflow-x: hidden;
 }
-
 .more
 {
     text-align: right;
@@ -42,11 +42,29 @@ td, th
 {
     text-align: left;
 }
-.notactive {
+.notactive
+{
     pointer-events: none;
     cursor: default;
 }
-
-.spinner-border {
+.status-spinner
+{
+    display:none;
+}
+.spinner-border
+{
     animation-duration: 1.5s;
+    z-index: 10;
+}
+.noarticles
+{
+    display:none;
+}
+.tooltip {
+    --bs-tooltip-max-width: 70vw;
+}
+
+button span
+{
+    display: inline;
 }
