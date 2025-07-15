@@ -371,7 +371,7 @@
             // console.log("fetch_articles()::");
             // fetch limit articles from the server starting at offset.
             // if article_ids is supplied, ignore limit and offset and fetch those articles.
-            return fetch("{{ url_for('feed.fetch_articles') }}", {
+            return fetch("{{ url_for('article.fetch_articles') }}", {
                     "method": "POST",
                     "headers": {
                         "Content-Type": "application/json"
@@ -613,15 +613,16 @@
                 .then(html => {
                     return sort_articles();
                 })
+                .then((html) => {
+                    enhance_accordion();
+                    return html;
+                })
                 .then(html => {
                     if (open_article != null) {
-                        $('div#articles div#accordion_articles div.accordiomn_item div#collapse' + open_article).addClass('show');
-                        runSequentially(() => reposition_article());
+                        $('div#articles div#accordion_articles div.accordion_item button.accordion_button').filter(":contains('b" + open_article +"')").removeClass('collapsed');
+                        $('div#articles div#accordion_articles div.accordion_item div#collapse' + open_article).addClass('show');
+                        reposition_article();
                     }
-
-                    return runSequentially(() => {
-                        enhance_accordion();
-                    });
 
                     offset = 0;
 

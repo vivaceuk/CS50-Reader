@@ -25,7 +25,7 @@ async def fetch_feeds():
 
     async with get_db() as db_session:
 
-        result = await db_session.execute(select(Feed).where(Feed.user_id == user_id))
+        result = await db_session.execute(select(Feed).join(User, Feed.user_id == User.id).where(User.id == user_id))
         feeds = result.scalars().fetchall()
         await db_session.close()
 
@@ -103,8 +103,8 @@ async def update_feed():
 
         # get the feeds for the current user.
         feed_id = int(request_data.get('feed_id'))
-        result = await db_session.execute(select(Feed).where(
-            and_(Feed.id == feed_id, Feed.user_id == user_id)))
+        result = await db_session.execute(select(Feed).join(User, Feed.user_id == User.id).where(
+            and_(Feed.id == feed_id, User.id == user_id)))
 
         f = result.scalars().one_or_none()
         try:
@@ -287,46 +287,4 @@ async def mark_feed_read():
         except:
             await db_session.close()
             return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
-
-
-@bp.route("/fetch_articles", methods=["POST"])
-@login_required
-async def fetch_articles():
-    """ Get the list of articles for the feed """
-    user_id = session["user_id"]
-    request_data = request.get_json()
-    feed_id = int(request_data.get('feed_id', None))
-    offset = request_data.get('offset', 0)
-    limit = request_data.get('limit', 20)
-    article_ids = request_data.get('article_ids', None)
-    try:
-        show_type = int(request_data.get('show_type'))
-    except:
-        show_type = 0
-
-    articles = list()
-    async with get_db() as db_session:
-
-        # get the articles for the given feed.
-
-        if article_ids:
-            entries = await db_session.execute(select(Article).join(Feed, Article.feed_id == Feed.id).join(User, Feed.user_id == User.id).where(and_(and_(
-                Feed.id == feed_id, Article.id.in_(article_ids)), User.id == user_id)).order_by(Article.published.desc(), Article.guid.desc()))
-        else:
-            if show_type < 2:
-                entries = await db_session.execute(select(Article).join(Feed, Article.feed_id == Feed.id).join(User, Feed.user_id == User.id).where(and_(and_(Feed.id == feed_id,
-                                                                                                                                                            Article.is_read == show_type), User.id == user_id)).order_by(Article.published.desc(), Article.guid.desc()).offset(offset).limit(limit))
-            else:
-                entries = await db_session.execute(select(Article).join(Feed, Article.feed_id == Feed.id).join(User, Feed.user_id == User.id).where(and_(
-                    Feed.id == feed_id, User.id == user_id)).order_by(Article.published.desc(), Article.guid.desc()).offset(offset).limit(limit))
-
-        articles = [row.to_dict() for row in entries.scalars().fetchall()]
-        await db_session.close()
-
-    # remove HTML escaping from the article for display (it was escaped for storage)
-    for a in articles:
-        a['title'] = html.unescape(a['title'])
-        a['summary'] = html.unescape(a['summary'])
-
-    return jsonify(articles)
 

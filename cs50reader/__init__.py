@@ -4,6 +4,7 @@ from flask import Flask, render_template
 import os, logging, asyncio, atexit, signal
 
 from cs50reader import auth, feed, article, util
+from cs50reader.db import engine
 
 
 def create_app(test_config=None):
@@ -73,7 +74,8 @@ def create_app(test_config=None):
         logging.info("close_db() called.")
 
         async def wrapped():
-            if cs50reader.db.engine is not None:
+            global engine
+            if engine is not None:
                 db.engine.dispose()
         asyncio.run(wrapped())
 
