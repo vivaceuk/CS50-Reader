@@ -1,0 +1,10 @@
+flask[async]
+Flask-Session
+pytz
+requests
+feedparser
+BeautifulSoup4
+html5lib
+sqlalchemy[asyncio]
+aiosqlite
+schedule

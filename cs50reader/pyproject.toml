@@ -1,0 +1,40 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 67.6"]
+
+[project]
+name = "cs50reader"
+version = "0.0.1a"
+description = "A Flask based RSS aggregator"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "flask[async]",
+    "Flask-Session",
+    "pytz",
+    "requests",
+    "feedparser",
+    "BeautifulSoup4",
+    "html5lib",
+    "sqlalchemy[asyncio]",
+    "aiosqlite",
+    "schedule",
+    "python-dateutil",
+    "python-dotenv",
+]
+
+requires-python = ">= 3.8"
+authors = [
+  {name = "Matthew Atkins", email = "vivaceuk@gmail.com"},
+]
+maintainers = [
+  {name = "Matthew Atkins", email = "vivaceuk@gmail.com"}
+]
+
+[project.scripts]
+cs50reader-update-feeds-cli = "cs50reader:update_feeds_cli"
+cs50reader-daemon-cli = "cs50reader:sched.main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
