@@ -23,7 +23,14 @@ def init_db():
     #with current_app.open_resource('schema.sql') as f:
     #    db.executescript(f.read().decode('utf8'))
 
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
+    async def init_models():
+        global engine
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run(init_models())
 
 
 @click.command('init-db')
