@@ -256,10 +256,13 @@
                 .then(data => {
                     if ($('select#active_feed option').length > 0) {
                         // select the first feed.
-                        let feed_to_show = 0;
-                        if (visible_feed !== null)
+                        let feed_to_show = document.cookie
+                            .split("; ")
+                            .find((row) => row.startsWith("active_feed="))
+                            ?.split("=")[1];
+                        if (feed_to_show == undefined && visible_feed !== null)
                             feed_to_show = visible_feed;
-                        else
+                        else if (feed_to_show == undefined)
                             feed_to_show = parseInt($("select#active_feed option:first").val(), 10);
 
                         $("select#active_feed option[value=" + feed_to_show + "]").attr('selected','selected');
@@ -807,7 +810,7 @@
 
             open_article = article_id;
 
-            if (parseInt($("div#articles div#accordion_articles div#a" + article_id).data("is-read")) === 1)
+            if (parseInt($("div#articles div#accordion_articles div#a" + article_id).data("is-read"), 10) == 1)
                 return;
 
             reposition_article();
@@ -851,22 +854,12 @@
                         throw (result);
 
                     if (result['status'] === 'success') {
-                        $("div#articles div#accordion_articles div#a" + article_id).attr("data-is-read", "1");
+                        $("div#articles div#accordion_articles div#a" + article_id).data("is-read", "1");
                         timer = setTimeout(() => {
                             let $icon = $('div#articles div#accordion_articles div#a' + article_id + '.accordion-item span#s' + article_id + ' i');
-                            const old_tooltip = bootstrap.Tooltip.getInstance($icon[0]);
-                            old_tooltip.dispose();
-                            const tooltip_visible = $icon.attr('aria-describedby');
-                            $icon.removeClass("text-primary bi-envelope fw-bold").addClass("text-secondary bi-envelope-open fw-normal").attr("data-bs-title", "Read");
-                            new bootstrap.Tooltip($icon[0], {
-                                html: true
-                            });
-                            if (tooltip_visible !== undefined)
-                            {
-                                const new_tooltip = bootstrap.Tooltip.getOrCreateInstance($icon[0]);
-                                new_tooltip.show();
-                            }
-
+                            let old_tooltip = bootstrap.Tooltip.getOrCreateInstance($icon[0]);
+                            old_tooltip.setContent({'.tooltip-inner': 'Read'});
+                            $icon.removeClass("text-primary bi-envelope fw-bold").addClass("text-secondary bi-envelope-open fw-normal").data("bs-title", "Read");
                         }, 500);
                     }
                 })
@@ -913,18 +906,18 @@
             const article_id = $(this).data('article-id');
             let $article = $("div#articles div#accordion_articles div#a" + article_id);
 
-            if (show_type === 0 && parseInt($article.data("is-read")) === 0) {
+            timer = setTimeout(() => {
                 // only hide the article if show_type is unread
-                timer = setTimeout(() => {
+                if (parseInt(show_type, 10) == 0 && parseInt($article.data("is-read"), 10) == 1) {
                     hideTooltips();
-                    $article.find('.tooltip').hide().remove();
-                    $article.off('show.bs.collapse').off('shown.bs.collapse').off('hidden.bs.collapse').remove();
+                    $("div#articles div#accordion_articles div#a" + article_id + ".tooltip").hide().remove();
+                    $("div#articles div#accordion_articles div#a" + article_id).off('show.bs.collapse').off('shown.bs.collapse').off('hidden.bs.collapse').remove();
                     toggleMarkFeedReadButton();
                     last_scrolltop = $('div#articles').scrollTop();
                     if ($('div#articles').isScrolledToBottom() && last_count === limit)
                         $('div#articles').trigger('scroll');
-                }, 750);
-            }
+                }
+            }, 750);
 
             $article.removeClass("border-top shadow border-primary");
 
@@ -1325,6 +1318,7 @@
                     $("div#articles_header select#show_type option[value=" + show_type + "]").attr('selected','selected');
 
                     visible_feed = new_visible_feed;
+                    document.cookie = "active_feed=" + visible_feed.toString();
                     $("div#feeds select#active_feed option").removeAttr('selected');
                     $("div#feeds select#active_feed option[value=" + visible_feed + "]").attr('selected','selected').trigger('change.$show_type');
                 })
@@ -1592,7 +1586,7 @@
             if (open_article === null)
                 return;
 
-            reposition_article();
+            //reposition_article();
         }
 
         // add an 'isScrolledToBottom' function to the jQuery object. we're only using this in articlesScrollEvent.
