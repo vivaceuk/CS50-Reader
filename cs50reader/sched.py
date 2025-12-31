@@ -47,7 +47,7 @@ def main():
 
     schedule.every(poll_interval).minutes.do(job)
 
-    logging.info(f" Polling for new articles every {poll_interval} minutes...")
+    logger.info(f" Polling for new articles every {poll_interval} minutes...")
 
     job()
 
