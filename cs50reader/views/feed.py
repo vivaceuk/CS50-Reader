@@ -1,6 +1,6 @@
 from util.helpers import login_required
 from sqlalchemy import select, insert, update, delete, distinct, and_, or_
-import json, subprocess, time
+import json, subprocess, time, logging
 import asyncio, html, dateutil
 from datetime import datetime, timedelta, timezone
 
@@ -22,8 +22,11 @@ from bs4 import BeautifulSoup
 from db.models import User, Feed, Article, JT_User_Feed, JT_Feed_Article
 from db.db import get_db
 
-feed_bp = Blueprint('feed', __name__, url_prefix='/feed')
+logging.basicConfig(level=logging.INFO)
+#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
+feed_bp = Blueprint('feed', __name__, url_prefix='/feed')
 
 @feed_bp.route("/fetch_feeds", methods=["POST"])
 @login_required
@@ -167,7 +170,7 @@ async def delete_feed():
             await db_session.close()
             return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
         except Exception as e:
-            print(e)
+            logger.info(e)
 
         await db_session.close()
     return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
@@ -193,7 +196,7 @@ async def mark_feed_read():
             return Response(response=json.dumps({'status': 'success'}), status=200, mimetype='application/json')
         except Exception as e:
             await db_session.close()
-            print(e)
+            logger.info(e)
             return Response(response=json.dumps({'status': 'failure'}), status=400, mimetype='application/json')
 
 
@@ -223,7 +226,7 @@ async def update_feeds(feed_id):
             # don't update feeds more frequently than every 15 minutes
             try:
                 if (last_modified > (datetime.now(tz=ZoneInfo("UTC"))) - timedelta(minutes=15)) or last_modified > (datetime.now(tz=ZoneInfo("UTC")) - timedelta(minutes=15)):
-                    print(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
                     continue
             except:
                 pass
@@ -231,10 +234,13 @@ async def update_feeds(feed_id):
 
             # not all feeds use the 'modified' or 'etag' header, but it saves bandwidth if they do.
             current_feed = feedparser.parse(f.url, etag=f.etag, modified=last_modified, agent='cs50reader/0.0.1 +https://github.com/vivaceuk/CS50-Reader/tree/main')
-            if current_feed.status == 304:
-                # feed hasn't chenged since we last polled it.
-                print(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
-                continue
+            try:
+                if current_feed.status == 304:
+                    # feed hasn't chenged since we last polled it.
+                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    continue
+            except:
+                pass
 
             if 'etag' in current_feed:
                 etag = current_feed.etag
@@ -262,10 +268,10 @@ async def update_feeds(feed_id):
 
             try:
                 if feed_updated <= last_modified or (etag == f.etag and f.etag != ''):
-                    print(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
                     continue
             except Exception as e:
-                logging.info(e)
+                logger.info(e)
 
             f.last_updated = datetime.now(tz=ZoneInfo("UTC"))
             f.last_modified = feed_updated.astimezone(timezone.utc)
@@ -370,7 +376,7 @@ async def update_feeds(feed_id):
             if len(new_articles):
                 result = await db_session.execute(insert(Article).returning(Article.id), new_articles)
                 await db_session.commit()
-            print(f"[{time.ctime()}] Feed id: {f.id}, {len(new_articles)} articles added.")
+            logger.info(f"[{time.ctime()}] Feed id: {f.id}, {len(new_articles)} articles added.")
 
 
         await db_session.commit()
@@ -430,7 +436,7 @@ async def purge_feeds(feed_id, article_id, days_to_keep, count_articles):
                 else:
                     f.purge_date = purge_date
 
-                print(f"Purged feed id: {f.id}")
+                logger.info(f"Purged feed id: {f.id}")
 
 
         await db_session.commit()
