@@ -15,9 +15,18 @@ To get started with CS50-Reader, follow these steps:
    ```bash
    git clone https://github.com/vivaceuk/CS50-Reader.git
    cd CS50-Reader
-2. **Install the Dependencies**:
+2. **Install the Module**:
    ```bash
-   pip install -r requirements.txt
+   pip install -e cs50reader
 3. **Run the Application**:
    ```bash
-   flask --app cs50reader run --debug
+   python -m flask run
+4. **Create the database**:
+   ```bash
+   python -m flask init-db
+5. **Run the scheduler**:
+      ```bash
+      python cs50reader-daemon-cli
+**Alternatively setup up a cron job to call**:
+      ```bash
+      python -m flask feed update
