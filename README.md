@@ -32,6 +32,8 @@ To get started with CS50-Reader, follow these steps:
 6. **Run the scheduler**:
       ```bash
       python cs50reader-daemon-cli
-**Alternatively setup up a cron job to call**:
+      ```
+    **Alternatively set up a cron job to call the update cli**:
       ```bash
       python -m flask feed update
+      ```
