@@ -18,13 +18,18 @@ To get started with CS50-Reader, follow these steps:
 2. **Install the Module**:
    ```bash
    pip install -e cs50reader
-3. **Run the Application**:
+3. **Set-up the enviroment**:
+   ```bash
+   export FLASK_APP=cs50reader
+   export FLASK_DEBUG=0
+   export PYTHONPATH=.:$PYTHONPATH
+4. **Run the Application**:
    ```bash
    python -m flask run
-4. **Create the database**:
+5. **Create the database**:
    ```bash
    python -m flask init-db
-5. **Run the scheduler**:
+6. **Run the scheduler**:
       ```bash
       python cs50reader-daemon-cli
 **Alternatively setup up a cron job to call**:
