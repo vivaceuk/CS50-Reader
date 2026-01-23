@@ -1,5 +1,5 @@
 from util.helpers import login_required
-from sqlalchemy import select, insert, update, delete, distinct, and_, or_
+from sqlalchemy import select, insert, update, delete, distinct, and_, or_, func
 import json, subprocess, time, logging
 import asyncio, html, dateutil
 from datetime import datetime, timedelta, timezone
@@ -22,7 +22,10 @@ from bs4 import BeautifulSoup
 from db.models import User, Feed, Article, JT_User_Feed, JT_Feed_Article
 from db.db import get_db
 
-logging.basicConfig(level=logging.INFO)
+if os.environ.get('FLASK_DEBUG') == '1':
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -142,13 +145,17 @@ async def update_feed():
         await db_session.commit()
         new_articles = [x for x in result.scalars().all()]
 
+        result = await db_session.execute(select(func.count(JT_Feed_Article.id)).join(JT_User_Feed, JT_Feed_Article.feed_id == JT_User_Feed.id).join(User, JT_User_Feed.user_id == User.id).where(and_(and_(JT_User_Feed.feed_id == feed_id, User.id == user_id), JT_Feed_Article.is_read == 0)))
+        unread_articles = result.scalars().one()
 
         await db_session.close()
 
     len_new_articles = len(new_articles)
 
     if len_new_articles != 0:
-        return Response(response=json.dumps({'status': 'success', 'count': len_new_articles, 'article_ids': new_articles}), status=200, mimetype='application/json')
+        return Response(response=json.dumps({'status': 'success', 'count': len_new_articles, 'article_ids': new_articles, 'unread_articles': unread_articles}), status=200, mimetype='application/json')
+    elif len_new_articles == 0:
+        return Response(response=json.dumps({'status': 'unchanged', 'count': len_new_articles, 'article_ids': new_articles, 'unread_articles': unread_articles}), status=200, mimetype='application/json')
 
     return Response(response=json.dumps({'status': 'unchanged', 'count': 0, 'article_ids': []}), status=304, mimetype='application/json')
 
@@ -226,7 +233,7 @@ async def update_feeds(feed_id):
             # don't update feeds more frequently than every 15 minutes
             try:
                 if (last_modified > (datetime.now(tz=ZoneInfo("UTC"))) - timedelta(minutes=15)) or last_modified > (datetime.now(tz=ZoneInfo("UTC")) - timedelta(minutes=15)):
-                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    logger.info(f"[{time.strftime("%d/%b/%Y %H:%M:%S", time.localtime())}] Feed id: {f.id}, 0 articles added.")
                     continue
             except:
                 pass
@@ -237,7 +244,7 @@ async def update_feeds(feed_id):
             try:
                 if current_feed.status == 304:
                     # feed hasn't chenged since we last polled it.
-                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    logger.info(f"[{time.strftime("%d/%b/%Y %H:%M:%S", time.localtime())}] Feed id: {f.id}, 0 articles added.")
                     continue
             except:
                 pass
@@ -268,7 +275,7 @@ async def update_feeds(feed_id):
 
             try:
                 if feed_updated <= last_modified or (etag == f.etag and f.etag != ''):
-                    logger.info(f"[{time.ctime()}] Feed id: {f.id}, 0 articles added.")
+                    logger.info(f"[{time.strftime("%d/%b/%Y %H:%M:%S", time.localtime())}] Feed id: {f.id}, 0 articles added.")
                     continue
             except Exception as e:
                 logger.info(e)
@@ -376,7 +383,7 @@ async def update_feeds(feed_id):
             if len(new_articles):
                 result = await db_session.execute(insert(Article).returning(Article.id), new_articles)
                 await db_session.commit()
-            logger.info(f"[{time.ctime()}] Feed id: {f.id}, {len(new_articles)} articles added.")
+            logger.info(f"[{time.strftime("%d/%b/%Y %H:%M:%S", time.localtime())}] Feed id: {f.id}, {len(new_articles)} articles added.")
 
 
         await db_session.commit()
