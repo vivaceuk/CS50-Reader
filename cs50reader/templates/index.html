@@ -90,15 +90,13 @@
             <div class="col col-2 ">
                 <div id="feeds" class="feeds container-fluid">
                     <div class="mb-3">
-                        <label for="active_feed" class="form-label">Feed</label>
-                        <select class="form-select form-control" id="active_feed" aria-describedby="activeFeedHelp">
-                        </select>
-                        <div id="activeFeedHelp" class="form-text">Choose the feed to display.</div>
+                        <div id="active_feed" class="list-group list-group-flush container-fluid text-start user-select-none">
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col col-10  position-relative translate-bottom">
-				<div class="mb-3 ">
+				<div class="mb-3 container-fluid">
 					<div class="">
 					<div class="row align-items-start" id="articles_header">
 					<div class="col col-md-auto"><label for="show_type" class="form-label">Show: </label></div>
@@ -245,27 +243,30 @@
                     let html = '';
                     try {
                         data.forEach(entry => {
-                            html += '<option value="' + entry.id + '">' + entry.title + '</option>';
+                            html += '<button class="fs-6 d-flex justify-content-between align-items-center list-group-item list-group-item-action" data-id="' + entry.id + '">' + entry.title + '<span class="badge text-bg-info badge-pill" aria-label="Unread"></span></button>';
                         });
                     } catch (error) {
                         // feed list is empty
                     }
-                    $('div#feeds > div > select#active_feed').html(html);
+                    $('div#feeds div#active_feed').html(html);
                     return data;
                 })
                 .then(data => {
-                    if ($('select#active_feed option').length > 0) {
+                    $('div#feeds div#active_feed button').on('click', changeActiveFeed);
+                    if ($('div#active_feed button').length > 0) {
                         // select the first feed.
                         let feed_to_show = document.cookie
                             .split("; ")
                             .find((row) => row.startsWith("active_feed="))
                             ?.split("=")[1];
-                        if (feed_to_show == undefined && visible_feed !== null)
+                        if (feed_to_show == undefined && visible_feed != null)
                             feed_to_show = visible_feed;
                         else if (feed_to_show == undefined)
-                            feed_to_show = parseInt($("select#active_feed option:first").val(), 10);
+                            feed_to_show = parseInt($("div#active_feed button:first").data("id"), 10);
 
-                        $("select#active_feed option[value=" + feed_to_show + "]").attr('selected','selected');
+                        visible_feed = feed_to_show;
+
+                        $("div#active_feed button[data-id=" + feed_to_show + "]").addClass('active');
                         $("div#articles_header select#show_type option").removeAttr('selected');
                         $("div#articles_header select#show_type  option[value=0]").attr('selected','selected');
                     }
@@ -280,9 +281,7 @@
                     return data;
                 })
                 .then(data => {
-                    // change active_feed to trigger get_articles.
-                    $('div#feeds select#active_feed').trigger('change');
-
+                    $("div#active_feed button.active").trigger("click");
                     return data;
                 })
                 .catch(error => {
@@ -461,7 +460,7 @@
                 $('div#articles_header a#mark_feed_read').addClass('disabled notactive').attr('aria-disabled', 'true');
 
             // hide or show the accordion articles/noarticles as suitable.
-            if ($("div#articles div#accordion_articles > div[id^='a'].accordion-item > h2.accordion-header > button").length > 0) {
+            if ($("div#articles div#accordion_articles div[id^='a'].accordion-item").length > 0) {
                 $('div#articles div#accordion_articles').attr('aria-hidden', 'false').removeClass('invisible d-none').addClass('visible').show();
                 $('div#articles p#noarticles').attr('aria-hidden', 'true').removeClass('visible').addClass('invisible d-none').hide();
             }
@@ -801,7 +800,8 @@
             let $thumbnail = $(this).children().find('img.img-thumbnail');
             $thumbnail.attr('src', $thumbnail.data('src'));
 
-            $(this).addClass("border-top shadow border-primary");
+            $(this).addClass("border-top shadow border-primary active");
+            $('div#collapse' + $(this).data('article-id')).addClass('in');
         }
 
         async function mark_article_read_event(event) {
@@ -855,6 +855,7 @@
 
                     if (result['status'] === 'success') {
                         $("div#articles div#accordion_articles div#a" + article_id).data("is-read", "1");
+                        $("div#active_feed button.active span.badge").html('' + parseInt($("div#active_feed button.active span.badge").html()) - 1);
                         timer = setTimeout(() => {
                             let $icon = $('div#articles div#accordion_articles div#a' + article_id + '.accordion-item span#s' + article_id + ' i');
                             let old_tooltip = bootstrap.Tooltip.getOrCreateInstance($icon[0]);
@@ -919,7 +920,7 @@
                 }
             }, 750);
 
-            $article.removeClass("border-top shadow border-primary");
+            $article.removeClass("border-top shadow border-primary active");
 
             if (article_id === open_article)
                 open_article = null;
@@ -1197,8 +1198,8 @@
             // console.log("update_feeds()::");
             let update_queue = [];
 
-            $('div#feeds select#active_feed option').each(function() {
-                update_queue.push(update_feed($(this).val()));
+            $('div#feeds div#active_feed button').each(function() {
+                update_queue.push(update_feed($(this).data("id")));
             });
 
             return Promise.all(update_queue);
@@ -1282,6 +1283,8 @@
 
                     }
 
+                    $("div#active_feed button[data-id='" + feed_id + "'] span.badge").html(data['unread_articles']);
+
                     return data;
                 })
                 .catch(error => {
@@ -1297,7 +1300,7 @@
 
         async function changeActiveFeed(event) {
             // console.log("changeActiveFeed()::");
-            if ($('div#feeds select#active_feed:selected').val() === '')
+            if ($(this).data("id") === undefined && !$(this).is("div#articles_header select#show_type")) //($('div#feeds ul#active_feed li.active').data("id") === undefined)
                 return;
 
             let result = await Promise.resolve().then(() => {
@@ -1309,7 +1312,7 @@
                 })
                 .then(()=> {
                     show_type = parseInt($('div#articles_header select#show_type').val(), 10);
-                    new_visible_feed = parseInt($("div#feeds select#active_feed").val(), 10);
+                    new_visible_feed = $(this).is("div#articles_header select#show_type") ? visible_feed : $(this).data("id"); //parseInt($("div#feeds ul#active_feed li.active").data("id"), 10);
                     if (new_visible_feed !== visible_feed)
                         show_type = 0;
 
@@ -1318,9 +1321,9 @@
                     $("div#articles_header select#show_type option[value=" + show_type + "]").attr('selected','selected');
 
                     visible_feed = new_visible_feed;
-                    document.cookie = "active_feed=" + visible_feed.toString();
-                    $("div#feeds select#active_feed option").removeAttr('selected');
-                    $("div#feeds select#active_feed option[value=" + visible_feed + "]").attr('selected','selected').trigger('change.$show_type');
+                    document.cookie = "active_feed=" + visible_feed.toString() + ";max-age=31536000";
+                    $("div#feeds div#active_feed button.active").removeClass('active');
+                    $("div#feeds div#active_feed button[data-id=" + visible_feed + "]").addClass('active').trigger('change.$show_type');
                 })
                 .then(() => {
                     get_articles();
@@ -1398,6 +1401,8 @@
                             $("div#articles div#accordion_articles div[id^='a'].accordion-item").off('show.bs.collapse').off('shown.bs.collapse').off('hidden.bs.collapse');
                             $("div#articles div#accordion_articles div[id^='a'].accordion-item").remove();
                         }
+
+                        $("div#active_feed button.active span.badge").html('0');
 
                         const liveToast = document.getElementById('liveToast');
                         const toastBootstrap = bootstrap.Toast.getOrCreateInstance(liveToast);
@@ -1649,12 +1654,14 @@
                             return html;
                         })
                         .then(html => {
+                            last_scrolltop = $('div#articles').scrollTop();
                             $('div#articles div#accordion_articles').append(html);
                         })
                         .then(() => {
                             $('div#articles div#accordion_articles').attr('aria-hidden', 'true').removeClass('visible').addClass('invisible d-none').hide();
                             sort_articles();
                             $('div#articles div#accordion_articles').attr('aria-hidden', 'false').removeClass('invisible d-none').addClass('visible').show();
+                            $('div#articles').scrollTop(last_scrolltop);
                         })
                         .then(() => {
                             enhance_accordion();
@@ -1695,7 +1702,7 @@
             $('div#navbar a#delete_feed').on('click', showDeleteFeedModal);
             $('div#addFeedModal button#btnAddFeed').on('click', clickAddFeed);
             $('div#deleteFeedModal button#btnDeleteFeed').on('click', clickDeleteFeed);
-            $('div#feeds select#active_feed').on('change', changeActiveFeed);
+            //$('div#feeds select#active_feed').on('change', changeActiveFeed);
             $('div#articles_header select#show_type').on('change', changeActiveFeed);
             $('div#articles_header a#mark_feed_read').on('click', mark_feed_read);
             $('div#navbar a#change_password').on('click', showChangePasswordModal);
